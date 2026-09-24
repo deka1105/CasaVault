@@ -1,6 +1,6 @@
 body {
   font-family: system-ui, sans-serif;
-  max-width: 720px;
+  max-width: 800px;
   margin: 2rem auto;
   padding: 0 1rem;
   color: #1a1a1a;
@@ -9,4 +9,72 @@ body {
 .disclaimer {
   color: #6b6b6b;
   font-size: 0.9rem;
+}
+
+.hint {
+  margin-top: 1.5rem;
+  color: #6b6b6b;
+}
+
+button {
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0 1.5rem;
+}
+
+th,
+td {
+  border: 1px solid #ccc;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+tr.severity-violation {
+  background: #fdecec;
+}
+
+tr.severity-caution {
+  background: #fff8e1;
+}
+
+.vault-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.party-toggle label {
+  margin-right: 1rem;
+}
+
+.banner {
+  background: #eef6ff;
+  border: 1px solid #b6d4f5;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+#event-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+#event-form input,
+#event-form select,
+#event-form textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.error {
+  color: #b00020;
 }

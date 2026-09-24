@@ -3,16 +3,10 @@ from sqlmodel import Session
 
 from app.database import get_session
 from app.models import Vault
+from app.rtc import handoff_for_zip
 from app.schemas import AskRequest, AskResponse
 
 router = APIRouter(prefix="/api/vaults/{vault_id}/ask", tags=["agent"])
-
-
-def _handoff_for_zip(request: Request, zip_code: str | None) -> dict:
-    rtc = request.app.state.statutes.right_to_counsel
-    if zip_code and zip_code in rtc["covered_zips"]:
-        return {"route": "hotline", "contact": rtc["hotline"]}
-    return {"route": "phillytenant_org", "contact": rtc["uncovered_fallback"]}
 
 
 @router.post("", response_model=AskResponse)
@@ -33,5 +27,5 @@ def ask(vault_id: str, payload: AskRequest, request: Request, session: Session =
         answer=None,
         citation=None,
         refusal="The grounded agent isn't wired up yet, so I can't answer from your vault or the statute table. I won't guess.",
-        handoff=_handoff_for_zip(request, vault.zip_code),
+        handoff=handoff_for_zip(request.app.state.statutes.right_to_counsel, vault.zip_code),
     )

@@ -71,7 +71,19 @@ tracker, and the agent are four thin entry points onto one engine.
 - `GET /api/vaults/{id}/flags` — current adjudication result, recomputed from scratch on every event write
 - `GET /api/vaults/{id}/deadlines` — statutory clocks started so far (currently just the deposit-return clock)
 - `GET /api/statutes` — verified rules only (draft rules never serialize out; see `statutes_loader.StatuteTable.verified_rules`)
+- `GET /api/vaults/{id}/rtc-check` — Right to Counsel zip lookup (`app/rtc.py`), shared with the agent stub's handoff
+- `POST /api/vaults/by-share-token/{token}/acknowledge` — counterparty one-click ack; first click wins, sets `Vault.acknowledged_at` once and is idempotent after that
+- `GET /api/vaults/{id}/evidence` — server-rendered, print-to-PDF-friendly HTML evidence packet (`app/evidence.py`); no JS, no external assets, chronological with citations
 - `POST /api/vaults/{id}/ask` — **stub**: always returns a refusal + RTC/hotline handoff, since no grounded retrieval exists yet. Do not make this "helpful" by having it answer from model knowledge — that violates the agent's core constraint in `PLAN.md`. Replace it with real grounding, not a shortcut.
+
+## Front end (`static/`)
+
+Plain HTML/JS, single page, no build step. `app.js` drives everything off
+`?vault=<id>` (owner) or `?share=<token>` (read-only counterparty) query
+params — the same page renders both modes, gating owner-only controls
+(event form, share link) on `state.isOwner`. Facts are entered as a raw JSON
+textarea, not a generated form, since fact keys are whatever the current
+statute conditions reference — see the "cheap interfaces" note in `PLAN.md`.
 
 ## Rules engine (`app/rules_engine.py`, `app/condition_eval.py`)
 
@@ -97,8 +109,8 @@ tracker, and the agent are four thin entry points onto one engine.
   statute row must not take down event creation for every vault.
 
 Not implemented yet: LLM extraction (Fri AM gate — needs an LLM API key,
-not yet provided), the real grounded agent, share-link acknowledgement,
-evidence packet export.
+deliberately deferred; extractor provider not yet chosen), the real
+grounded agent.
 
 ## `statutes.yaml` conventions
 

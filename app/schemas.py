@@ -15,6 +15,7 @@ class VaultRead(BaseModel):
     zip_code: Optional[str]
     share_token: str
     created_at: datetime
+    acknowledged_at: Optional[datetime]
 
 
 class EventCreate(BaseModel):

@@ -23,6 +23,7 @@ class Vault(SQLModel, table=True):
     zip_code: Optional[str] = None
     share_token: str = Field(default_factory=_uuid, index=True, unique=True)
     created_at: datetime = Field(default_factory=_now)
+    acknowledged_at: Optional[datetime] = None
 
 
 class VaultEvent(SQLModel, table=True):

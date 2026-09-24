@@ -13,8 +13,82 @@
   </header>
 
   <main id="app">
-    <p>Skeleton front end. Backend is up when <code>/api/health</code> returns
-    <code>{"status": "ok"}</code>.</p>
+    <section id="landing">
+      <button id="create-vault-btn">Create a demo vault</button>
+      <p class="hint">Or open one you already have:</p>
+      <form id="open-vault-form">
+        <input id="open-vault-id" type="text" placeholder="vault id or share token">
+        <button type="submit">Open</button>
+      </form>
+    </section>
+
+    <section id="vault-view" hidden>
+      <div id="rtc-banner" class="banner" hidden></div>
+
+      <div class="vault-header">
+        <h2 id="vault-label"></h2>
+        <div class="party-toggle">
+          <label><input type="radio" name="party" value="tenant" checked> Tenant view</label>
+          <label><input type="radio" name="party" value="landlord"> Landlord view</label>
+        </div>
+      </div>
+
+      <div id="owner-controls">
+        <p>Share link (read-only, counterparty view):
+          <a id="share-link" href="#" target="_blank"></a>
+        </p>
+        <a id="evidence-link" href="#" target="_blank">Open printable evidence packet</a>
+      </div>
+
+      <div id="counterparty-controls" hidden>
+        <p id="ack-status"></p>
+        <button id="acknowledge-btn">Acknowledge receipt of this vault</button>
+      </div>
+
+      <section id="event-form-section">
+        <h3>Log an event</h3>
+        <form id="event-form">
+          <label>Type
+            <select id="event-type">
+              <option value="document_upload">Document upload</option>
+              <option value="repair_requested">Repair requested</option>
+              <option value="notice_received">Notice received</option>
+              <option value="inspection">Inspection</option>
+              <option value="payment">Payment</option>
+              <option value="photo">Photo</option>
+              <option value="move_in">Move in</option>
+              <option value="move_out">Move out</option>
+            </select>
+          </label>
+          <label>Date
+            <input id="event-date" type="date" required>
+          </label>
+          <label>Notes
+            <input id="event-notes" type="text" placeholder="optional">
+          </label>
+          <label>Facts (JSON)
+            <textarea id="event-facts" rows="3" placeholder='{"deposit_amount": 1200, "tenancy_year": 1}'></textarea>
+          </label>
+          <button type="submit">Add event</button>
+        </form>
+        <p id="event-error" class="error" hidden></p>
+      </section>
+
+      <section>
+        <h3>Timeline</h3>
+        <table id="events-table"><tbody></tbody></table>
+      </section>
+
+      <section>
+        <h3>Flags</h3>
+        <table id="flags-table"><tbody></tbody></table>
+      </section>
+
+      <section>
+        <h3>Deadlines</h3>
+        <table id="deadlines-table"><tbody></tbody></table>
+      </section>
+    </section>
   </main>
 
   <script src="/app.js"></script>
