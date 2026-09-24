@@ -32,6 +32,8 @@ class EventRead(BaseModel):
     recorded_at: datetime
     facts: dict[str, Any]
     notes: Optional[str]
+    source_document_ref: Optional[str] = None
+    original_filename: Optional[str] = None
 
 
 class FlagRead(BaseModel):

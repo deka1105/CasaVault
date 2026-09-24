@@ -25,9 +25,10 @@ def render_evidence_packet(
     event_rows = "\n".join(
         f"<tr><td>{_esc(e.occurred_at)}</td><td>{_esc(e.event_type)}</td>"
         f"<td>{_esc(e.notes or '')}</td>"
-        f"<td><pre>{_esc(_format_facts(e.facts))}</pre></td></tr>"
+        f"<td><pre>{_esc(_format_facts(e.facts))}</pre></td>"
+        f"<td>{_document_link(vault.id, e)}</td></tr>"
         for e in ordered_events
-    ) or "<tr><td colspan='4'><em>No events recorded.</em></td></tr>"
+    ) or "<tr><td colspan='5'><em>No events recorded.</em></td></tr>"
 
     flag_rows = "\n".join(
         f"<tr class='severity-{_esc(f.severity)}'><td>{_esc(f.severity)}</td>"
@@ -71,7 +72,7 @@ def render_evidence_packet(
 
   <h2>Timeline</h2>
   <table>
-    <thead><tr><th>Date</th><th>Event</th><th>Notes</th><th>Facts</th></tr></thead>
+    <thead><tr><th>Date</th><th>Event</th><th>Notes</th><th>Facts</th><th>Document</th></tr></thead>
     <tbody>{event_rows}</tbody>
   </table>
 
@@ -92,3 +93,10 @@ def render_evidence_packet(
 
 def _format_facts(facts: dict[str, Any]) -> str:
     return "\n".join(f"{k}: {v}" for k, v in (facts or {}).items()) or "—"
+
+
+def _document_link(vault_id: str, event: VaultEvent) -> str:
+    if not event.source_document_ref:
+        return ""
+    label = _esc(event.original_filename or "view")
+    return f'<a href="/api/vaults/{_esc(vault_id)}/documents/{event.id}">{label}</a>'

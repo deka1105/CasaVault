@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import STATIC_DIR, STATUTES_PATH
 from app.database import init_db
-from app.routers import agent, events, evidence, vault
+from app.routers import agent, documents, events, evidence, vault
 from app.statutes_loader import load_statute_table
 
 
@@ -22,6 +22,7 @@ app.include_router(vault.router)
 app.include_router(events.router)
 app.include_router(agent.router)
 app.include_router(evidence.router)
+app.include_router(documents.router)
 
 
 @app.get("/api/health")

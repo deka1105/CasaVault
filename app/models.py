@@ -39,6 +39,7 @@ class VaultEvent(SQLModel, table=True):
     recorded_at: datetime = Field(default_factory=_now)
     facts: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     source_document_ref: Optional[str] = None
+    original_filename: Optional[str] = None
     notes: Optional[str] = None
 
 

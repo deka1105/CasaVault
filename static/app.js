@@ -88,8 +88,13 @@ function renderEvents(events) {
   const tbody = qs("events-table").querySelector("tbody");
   tbody.innerHTML =
     events
-      .map((e) => `<tr><td>${e.occurred_at}</td><td>${e.event_type}</td><td>${e.notes || ""}</td></tr>`)
-      .join("") || "<tr><td colspan='3'><em>No events yet.</em></td></tr>";
+      .map((e) => {
+        const doc = e.source_document_ref
+          ? `<a href="/api/vaults/${state.vaultId}/documents/${e.id}" target="_blank">${e.original_filename || "view file"}</a>`
+          : "";
+        return `<tr><td>${e.occurred_at}</td><td>${e.event_type}</td><td>${e.notes || ""}</td><td>${doc}</td></tr>`;
+      })
+      .join("") || "<tr><td colspan='4'><em>No events yet.</em></td></tr>";
 }
 
 function renderFlags(flags) {
@@ -145,39 +150,65 @@ function setupOpenVault() {
   });
 }
 
+function updateEventFormMode() {
+  const isUpload = qs("event-type").value === "document_upload";
+  qs("event-file-label").hidden = !isUpload;
+  qs("event-facts-label").hidden = isUpload;
+}
+
+async function uploadDocument() {
+  const file = qs("event-file").files[0];
+  if (!file) throw new Error("Choose a file to upload.");
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("occurred_at", qs("event-date").value);
+  if (qs("event-notes").value) formData.append("notes", qs("event-notes").value);
+
+  const res = await fetch(`/api/vaults/${state.vaultId}/documents`, { method: "POST", body: formData });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `${res.status} ${res.statusText}`);
+  }
+}
+
+async function createJsonEvent() {
+  let facts = {};
+  const raw = qs("event-facts").value.trim();
+  if (raw) {
+    facts = JSON.parse(raw); // caller catches malformed JSON
+  }
+  await api(`/api/vaults/${state.vaultId}/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      event_type: qs("event-type").value,
+      occurred_at: qs("event-date").value,
+      notes: qs("event-notes").value || null,
+      facts,
+    }),
+  });
+}
+
 function setupEventForm() {
+  qs("event-type").addEventListener("change", updateEventFormMode);
+
   qs("event-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const errorEl = qs("event-error");
     errorEl.hidden = true;
 
-    let facts = {};
-    const raw = qs("event-facts").value.trim();
-    if (raw) {
-      try {
-        facts = JSON.parse(raw);
-      } catch {
-        errorEl.textContent = "Facts must be valid JSON.";
-        errorEl.hidden = false;
-        return;
-      }
-    }
-
     try {
-      await api(`/api/vaults/${state.vaultId}/events`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event_type: qs("event-type").value,
-          occurred_at: qs("event-date").value,
-          notes: qs("event-notes").value || null,
-          facts,
-        }),
-      });
+      if (qs("event-type").value === "document_upload") {
+        await uploadDocument();
+      } else {
+        await createJsonEvent();
+      }
       qs("event-form").reset();
+      updateEventFormMode();
       await refreshData();
     } catch (err) {
-      errorEl.textContent = err.message;
+      errorEl.textContent = err.message.includes("JSON") ? "Facts must be valid JSON." : err.message;
       errorEl.hidden = false;
     }
   });

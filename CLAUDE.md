@@ -75,6 +75,25 @@ tracker, and the agent are four thin entry points onto one engine.
 - `POST /api/vaults/by-share-token/{token}/acknowledge` — counterparty one-click ack; first click wins, sets `Vault.acknowledged_at` once and is idempotent after that
 - `GET /api/vaults/{id}/evidence` — server-rendered, print-to-PDF-friendly HTML evidence packet (`app/evidence.py`); no JS, no external assets, chronological with citations
 - `POST /api/vaults/{id}/ask` — **stub**: always returns a refusal + RTC/hotline handoff, since no grounded retrieval exists yet. Do not make this "helpful" by having it answer from model knowledge — that violates the agent's core constraint in `PLAN.md`. Replace it with real grounding, not a shortcut.
+- `POST /api/vaults/{id}/documents` (multipart), `GET /api/vaults/{id}/documents/{event_id}` — real file upload/download, backing `document_upload` events. See below.
+
+## Document uploads (`app/documents.py`, `app/routers/documents.py`)
+
+- Files land on local disk under `uploads/<vault_id>/<random-name><ext>`
+  (`UPLOADS_DIR` in `app/config.py`, gitignored). The on-disk name is always
+  randomized — the client's filename is never trusted for the path, only for
+  its extension (allowlisted: pdf/jpg/jpeg/png/heic/txt/docx) and for display
+  (`VaultEvent.original_filename`, used only in the download's
+  `Content-Disposition` and in the UI/evidence packet, never as a path).
+  Uploads are capped at 15MB (`MAX_UPLOAD_BYTES`).
+- This is public-facing (PLAN.md: deploy to a public URL), so treat upload
+  handling as attack surface: `FileResponse`'s default
+  `content_disposition_type="attachment"` is load-bearing — never switch an
+  uploaded file to inline serving, since a stored .txt/.pdf rendered inline
+  under this origin is a stored-content risk.
+- Creates a `document_upload` `VaultEvent` with empty `facts` — this is the
+  storage half of "extract"; turning the file into facts is still the
+  deferred LLM extractor (see below).
 
 ## Front end (`static/`)
 
