@@ -66,13 +66,39 @@ tracker, and the agent are four thin entry points onto one engine.
 ## Current API surface
 
 - `POST /api/vaults`, `GET /api/vaults/{id}`, `GET /api/vaults/by-share-token/{token}`
-- `POST /api/vaults/{id}/events`, `GET /api/vaults/{id}/events` — raw timeline events, no adjudication yet
+- `POST /api/vaults/{id}/events` — records a timeline event, then re-runs adjudication (see below)
+- `GET /api/vaults/{id}/events` — raw timeline events
+- `GET /api/vaults/{id}/flags` — current adjudication result, recomputed from scratch on every event write
+- `GET /api/vaults/{id}/deadlines` — statutory clocks started so far (currently just the deposit-return clock)
 - `GET /api/statutes` — verified rules only (draft rules never serialize out; see `statutes_loader.StatuteTable.verified_rules`)
 - `POST /api/vaults/{id}/ask` — **stub**: always returns a refusal + RTC/hotline handoff, since no grounded retrieval exists yet. Do not make this "helpful" by having it answer from model knowledge — that violates the agent's core constraint in `PLAN.md`. Replace it with real grounding, not a shortcut.
 
-Not implemented yet: extraction, the rules engine (adjudication against
-`condition` strings in `statutes.yaml`), deadline computation, share-link
-acknowledgement, evidence packet export.
+## Rules engine (`app/rules_engine.py`, `app/condition_eval.py`)
+
+- `aggregate_facts` merges every `VaultEvent.facts` dict for a vault into one
+  fact set (later `recorded_at` wins on key conflicts). Adjudication runs
+  against this vault-level view, not a single event in isolation — most
+  `condition` strings in `statutes.yaml` reference facts that come from
+  different documents (e.g. lease-signing facts vs. move-out facts).
+- `condition_eval.evaluate_condition` is a narrow, `ast`-based evaluator
+  (and/or/not, comparisons, bare names, literals only — no calls/attributes).
+  It also normalizes the statute table's authoring conventions into valid
+  Python: `AND`/`OR`/`NOT` → lowercase, and lowercase `true`/`false` →
+  `True`/`False`. **If a new statute rule's condition still evaluates wrong,
+  check this normalization step before assuming the rule text is broken** —
+  bare `true`/`false` silently parsing as unbound names (always false) was
+  a real bug caught by `tests/test_rules_engine.py`.
+- `adjudicate_vault` only handles rules with a `condition` key. Clock-type
+  rules (`type: deadline`, no `condition`) are special-cased per event type
+  in `compute_deadlines_for_event` — currently just `deposit_return_clock`,
+  gated on the move-out event's `forwarding_address_provided` fact per the
+  statute's load-bearing requirement.
+- A bad/unparseable condition logs and is skipped, not raised — one broken
+  statute row must not take down event creation for every vault.
+
+Not implemented yet: LLM extraction (Fri AM gate — needs an LLM API key,
+not yet provided), the real grounded agent, share-link acknowledgement,
+evidence packet export.
 
 ## `statutes.yaml` conventions
 

@@ -33,6 +33,25 @@ class EventRead(BaseModel):
     notes: Optional[str]
 
 
+class FlagRead(BaseModel):
+    id: int
+    statute_id: str
+    severity: str
+    citation: str
+    message_tenant: Optional[str]
+    message_landlord: Optional[str]
+    created_at: datetime
+
+
+class DeadlineRead(BaseModel):
+    id: int
+    statute_id: str
+    due_date: date
+    description: str
+    resolved: bool
+    created_at: datetime
+
+
 class AskRequest(BaseModel):
     question: str
     party: str = "tenant"  # "tenant" | "landlord"
