@@ -1,0 +1,162 @@
+# CasaVault — VERIFIED statute table (Philadelphia / Pennsylvania)
+#
+# Verification status legend:
+#   verified: confirmed against statute text or a legal-aid / city primary source
+#   draft:    plausible but citation not yet pinned — MUST NOT render to a user
+#
+# Verified 2026-09-24. Sources listed at the bottom of each rule.
+#
+# NOTE: rules live under the `rules:` key (a YAML block sequence cannot be a
+# sibling of the `jurisdiction:` mapping key at the same indentation level).
+
+jurisdiction: "Philadelphia, PA"
+
+rules:
+  # =========================================================================
+  # A. SECURITY DEPOSIT — PA Landlord and Tenant Act of 1951
+  # =========================================================================
+
+  - id: deposit_cap_year_one
+    status: verified
+    applies_to: security_deposit
+    party_framing:
+      tenant: "Your landlord is holding more deposit than Pennsylvania allows."
+      landlord: "You may not hold more than two months' rent in year one."
+    condition: "deposit_months > 2 AND tenancy_year == 1"
+    severity: violation
+    citation: "68 P.S. § 250.511a(a)"
+    detail: "During the first year of a lease the deposit may not exceed two months' rent. Pet deposits count toward the same cap."
+
+  - id: deposit_cap_year_two_plus
+    status: verified
+    applies_to: security_deposit
+    party_framing:
+      tenant: "From your second year on, your landlord may not keep more than one month's rent as a deposit — and must return the excess without you asking."
+      landlord: "At the start of year two you must return anything above one month's rent."
+    condition: "deposit_held_months > 1 AND tenancy_year >= 2"
+    severity: violation
+    citation: "68 P.S. § 250.511a(b)"
+    detail: "The reduction is mandatory at the start of year two. The excess must be returned to the tenant."
+
+  - id: deposit_freeze_five_years
+    status: verified
+    applies_to: security_deposit
+    condition: "tenancy_years >= 5 AND deposit_increased == true"
+    severity: violation
+    citation: "68 P.S. § 250.511a(d)"
+    detail: "After five years of possession, a rent increase does not permit an increase in the security deposit."
+
+  - id: deposit_waiver_void
+    status: verified
+    applies_to: [security_deposit, waiver_of_tenant_rights]
+    party_framing:
+      tenant: "This lease tries to make you waive your deposit rights. That waiver has no effect."
+      landlord: "A lease term waiving this section is unenforceable."
+    condition: "clause_waives_deposit_rights == true"
+    severity: violation
+    citation: "68 P.S. § 250.511a(f)"
+    detail: "Any attempted waiver of this section by a tenant, by contract or otherwise, is void and unenforceable."
+    note: "HIGH VALUE FLAG — a lease clause that is void on its face, detectable by extraction alone."
+
+  - id: deposit_escrow_required
+    status: verified
+    applies_to: security_deposit
+    condition: "deposit_amount > 100"
+    severity: caution
+    citation: "68 P.S. § 250.511b"
+    detail: "Deposits over $100 must be held in a separate escrow account at a regulated banking institution. The landlord must notify the tenant in writing of the bank's name and address and the amount deposited. From year three the account must be interest-bearing, with interest paid to the tenant annually."
+
+  - id: deposit_return_clock
+    status: verified
+    applies_to: "event:move_out"
+    type: deadline
+    clock: "move_out_date + 30 days"
+    requires: "tenant provided a written forwarding address"
+    party_framing:
+      tenant: "Your landlord has until {deadline} to return your deposit or send an itemized list of damages."
+      landlord: "You must return the deposit or send an itemized list by {deadline}."
+    on_expiry: "A landlord who sends no itemized list within 30 days forfeits the right to withhold any amount. A landlord who fails to return what is owed may be liable for double the amount held above actual damages."
+    citation: "68 P.S. § 250.512"
+    note: "The forwarding-address condition is load-bearing — without it the penalties are lost. The vault should prompt the tenant to record it as an event at move-out."
+
+  # =========================================================================
+  # B. PHILADELPHIA LICENSING — the highest-value rules in this table
+  # =========================================================================
+  # This is the most common successful defense in Philadelphia landlord-tenant
+  # court and almost no consumer tool surfaces it.
+
+  - id: no_rental_license
+    status: verified
+    applies_to: [lease, "event:notice_received"]
+    party_framing:
+      tenant: "If your landlord did not hold a valid Philadelphia rental license, they cannot collect rent or evict you for that period."
+      landlord: "Without a current rental license you cannot recover possession or collect rent for the period of noncompliance."
+    condition: "landlord_rental_license_valid == false"
+    severity: violation
+    citation: "Phila. Code § 9-3902; § 9-3901(4)(e)"
+    detail: "An owner who fails to obtain a rental license is denied the right to recover possession or to collect rent during the period of noncompliance. In any eviction or rent-collection action the owner must attach a copy of the license."
+
+  - id: no_certificate_of_rental_suitability
+    status: verified
+    applies_to: lease
+    party_framing:
+      tenant: "Your landlord was required to give you a Certificate of Rental Suitability and the Partners in Good Housing handbook when you signed. If they didn't, they cannot collect rent or evict you for that period."
+      landlord: "You must deliver the Certificate and handbook at lease signing, and be able to prove delivery."
+    condition: "certificate_of_rental_suitability_provided == false"
+    severity: violation
+    citation: "Phila. Code § 9-3903; § 9-3901(4)(e)"
+    detail: "Landlords must give new tenants a Certificate of Rental Suitability, issued by L&I no more than 60 days before the lease start, plus the Partners in Good Housing handbook. Noncompliance denies the right to recover possession or collect rent for the period of noncompliance."
+    vault_action: "Prompt the tenant at move-in to record whether they received these. This is the single most valuable record in the vault."
+
+  - id: open_violations_over_30_days
+    status: verified
+    applies_to: lease
+    condition: "li_violations_open_days > 30"
+    severity: violation
+    citation: "Phila. Bill No. 250329 (Safe Healthy Homes Act, signed May 2026)"
+    detail: "Extends the rent-collection and eviction bar to any property with L&I violations open more than 30 days. Licenses cannot be issued or renewed until violations are resolved and fines paid. Landlords and L&I must notify tenants by first-class mail when a license lapses or falls out of CRS compliance. Court filings must now attach the rental license, the Certificate of Rental Suitability, and L&I inspection history for the tenancy."
+    note: "Signed four months ago. Recency is a differentiator — cite it explicitly in the write-up."
+
+  # =========================================================================
+  # C. HABITABILITY — DRAFT, do not render until pinned
+  # =========================================================================
+
+  - id: habitability_waiver
+    status: draft
+    applies_to: waiver_of_tenant_rights
+    condition: "waives_implied_warranty_of_habitability == true"
+    severity: violation
+    citation: "Pugh v. Holmes (Pa. 1979) — PIN CITE NEEDED"
+    detail: "Pennsylvania recognizes an implied warranty of habitability in residential leases. Need to confirm the reporter citation and whether waiver is void as against public policy before this renders."
+
+  - id: self_help_eviction
+    status: draft
+    applies_to: "event:notice_received"
+    condition: "lockout_or_utility_shutoff == true"
+    severity: violation
+    citation: "PIN CITE NEEDED — Philadelphia bars self-help eviction"
+    detail: "Landlord must proceed through the courts. Confirm the code section."
+
+# =============================================================================
+# D. RIGHT TO COUNSEL HANDOFF (verified Jan 2026, phillytenant.org)
+# =============================================================================
+
+right_to_counsel:
+  covered_zips: ["19121", "19139", "19134", "19144", "19132", "19131", "19153"]
+  eligibility: "At or below 200% of the Federal Poverty Level. Immigration status does not affect eligibility."
+  hotline: "(267) 443-2500"
+  uncovered_fallback: "https://phillytenant.org"
+
+# =============================================================================
+# SOURCES
+# =============================================================================
+# 68 P.S. § 250.511a — FindLaw statute text
+#   https://codes.findlaw.com/pa/title-68-ps-real-and-personal-property/pa-st-sect-68-250-511a/
+# Security deposits in PA — Community Legal Services of Philadelphia
+#   https://clsphila.org/housing/security-deposits-in-pa/
+# Rental suitability — Philadelphia Fair Housing Commission
+#   https://www.phila.gov/departments/fair-housing-commission/tenant-protections/rental-suitability/
+# Landlord-Tenant Defenses Checklist — Philly VIP
+#   https://www.phillyvip.org/wp-content/uploads/2021/07/Landlord-Tenant-Defenses-Checklist.pdf
+# Right to Counsel — PhillyTenant.org
+#   https://phillytenant.org/right-to-counsel-advocacy/

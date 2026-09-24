@@ -1,0 +1,12 @@
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 720px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  color: #1a1a1a;
+}
+
+.disclaimer {
+  color: #6b6b6b;
+  font-size: 0.9rem;
+}
