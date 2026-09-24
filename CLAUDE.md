@@ -127,9 +127,50 @@ statute conditions reference — see the "cheap interfaces" note in `PLAN.md`.
 - A bad/unparseable condition logs and is skipped, not raised — one broken
   statute row must not take down event creation for every vault.
 
-Not implemented yet: LLM extraction (Fri AM gate — needs an LLM API key,
-deliberately deferred; extractor provider not yet chosen), the real
-grounded agent.
+## Extraction (`app/extraction_schema.py`, `app/extractor.py`)
+
+- Provider: **Gemini** (`google-genai` SDK), chosen over Anthropic after the
+  fact — `.env.example` was originally written for `ANTHROPIC_API_KEY` and
+  has since been updated to `GEMINI_API_KEY`. Set it in `.env` to activate
+  extraction; get one at https://aistudio.google.com/apikey.
+- `ExtractedFacts` (`app/extraction_schema.py`) is the fixed schema — one
+  optional field per fact any `statutes.yaml` `condition` string references,
+  plus `forwarding_address_provided`. **Keep this in sync with
+  statutes.yaml**: a new rule whose condition references a fact not in this
+  schema will parse and adjudicate fine, but extraction will never populate
+  it, so the rule can only ever fire from manually-entered facts.
+- `extract_facts_from_file` (`app/extractor.py`) isolates every
+  Gemini-specific call behind one function, using `google-genai`'s
+  "Interactions API" (`client.interactions.create`). The request/response
+  shape (content blocks, `response_format`, `interaction.output_text`) was
+  checked directly against the **installed SDK's own type definitions**
+  (`_gaos/types/interactions/*.py`) — an initial pass wired against a
+  web-doc summary and got the shape wrong in three places (`response_format`
+  nesting, content-block field names, and using manual base64 instead of
+  passing a `Path` straight through), all caught by reading the actual
+  installed package source instead of trusting the summary. So the wire
+  shape should be right. **What's still unverified is an actual live call**
+  — no `GEMINI_API_KEY` was available while building this, including
+  whether `GEMINI_MODEL` (`gemini-3.8-flash`) is a real, currently-served
+  model id; that part came from web search, not package introspection.
+  Check the model id first if this errors for real.
+- `.txt` uploads are sent as an inline text block, not as a "document"
+  content block — `DocumentContentMimeType` only recognizes
+  `application/pdf` and `text/csv`. `.docx` has no mapping at all and
+  raises `ExtractionUnsupported`, caught by the router same as any other
+  extraction failure.
+- `app/routers/documents.py`'s upload handler calls this after saving the
+  file and treats every failure mode the same way: no key configured, an
+  unsupported file type (`.docx` has no mapping — Gemini's document
+  understanding doesn't take it directly), or any other exception all leave
+  `facts={}` rather than failing the upload. The document is always safely
+  stored; extraction is strictly best-effort on top of that.
+- On successful extraction, the router writes the facts onto the event and
+  calls `adjudicate_vault` immediately — no separate "run extraction" step.
+
+Not implemented yet: the real grounded agent (`/ask` still always refuses —
+see the agent section above). The extractor is wired but its first live-key
+test is still pending.
 
 ## `statutes.yaml` conventions
 
