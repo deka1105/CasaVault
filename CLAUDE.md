@@ -2,14 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Status: greenfield
+## Status
 
-This directory is currently empty except for `PLAN.md` (full project spec) and
-`statutes.yaml` (the statute table). No application code, no git repo, no
-dependency manifests exist yet. This is a hackathon build (LexHack 2026) with a
-hard submission deadline of **Sun Sep 27, 2026, 5:00 PM EDT** — read `PLAN.md`'s
-build-order table before starting any work session to know what day/gate we're
-against.
+FastAPI skeleton is in place (vault + event CRUD, statute loader, agent stub
+that always refuses — see below). Extraction, the rules engine, and the real
+grounded agent are not implemented yet. This is a hackathon build (LexHack
+2026) with a hard submission deadline of **Sun Sep 27, 2026, 5:00 PM EDT** —
+read `PLAN.md`'s build-order table before starting any work session to know
+what day/gate we're against.
+
+## Commands
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+uvicorn app.main:app --reload   # dev server, http://127.0.0.1:8000
+pytest -q                       # full test suite
+pytest -q -k test_name          # single test
+```
 
 ## What CasaVault is
 
@@ -46,15 +57,28 @@ tracker, and the agent are four thin entry points onto one engine.
 
 ## Stack
 
-- FastAPI + SQLite (backend)
-- Plain HTML/JS front end, no framework
-- LLM extraction via API, schema-constrained output
-- Statute rules in YAML (`statutes.yaml`), loaded at startup
+- FastAPI + SQLite (backend), SQLModel for the ORM layer
+- Plain HTML/JS front end, no framework — served as static files from `static/`, mounted last in `app/main.py` so it doesn't shadow `/api/*`
+- LLM extraction via API, schema-constrained output — not built yet
+- Statute rules in YAML (`statutes.yaml`), loaded at startup via `app/statutes_loader.py`
 - Agent retrieval scoped to vault rows + rules rows only — no open web/model knowledge
-- No build tooling exists yet; commands will be added here once the backend scaffold lands
+
+## Current API surface
+
+- `POST /api/vaults`, `GET /api/vaults/{id}`, `GET /api/vaults/by-share-token/{token}`
+- `POST /api/vaults/{id}/events`, `GET /api/vaults/{id}/events` — raw timeline events, no adjudication yet
+- `GET /api/statutes` — verified rules only (draft rules never serialize out; see `statutes_loader.StatuteTable.verified_rules`)
+- `POST /api/vaults/{id}/ask` — **stub**: always returns a refusal + RTC/hotline handoff, since no grounded retrieval exists yet. Do not make this "helpful" by having it answer from model knowledge — that violates the agent's core constraint in `PLAN.md`. Replace it with real grounding, not a shortcut.
+
+Not implemented yet: extraction, the rules engine (adjudication against
+`condition` strings in `statutes.yaml`), deadline computation, share-link
+acknowledgement, evidence packet export.
 
 ## `statutes.yaml` conventions
 
+- Rules live under a top-level `rules:` key (a YAML block sequence can't be a
+  sibling of the `jurisdiction:` mapping key at the same indentation — the
+  file as originally drafted didn't parse; this was fixed in the first commit).
 - `status: verified` vs `status: draft` — **draft rules must never render to a
   user.** They exist as tracked TODOs pending a pin cite (see section C,
   habitability, in the file). Any code path that reads this table must filter
