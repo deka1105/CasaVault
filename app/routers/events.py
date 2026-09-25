@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.documents import events_with_documents
 from app.models import Deadline, Flag, Vault, VaultEvent
 from app.rules_engine import (
     adjudicate_vault,
@@ -41,9 +42,7 @@ def create_event(
 @router.get("/events", response_model=list[EventRead])
 def list_events(vault_id: str, session: Session = Depends(get_session)):
     _require_vault(vault_id, session)
-    return session.exec(
-        select(VaultEvent).where(VaultEvent.vault_id == vault_id).order_by(VaultEvent.occurred_at)
-    ).all()
+    return events_with_documents(vault_id, session)
 
 
 @router.get("/flags", response_model=list[FlagRead])
