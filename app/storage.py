@@ -28,7 +28,17 @@ def save_temp(vault_id: str, filename: str, content: bytes) -> Path:
 def persist(temp_path: Path, vault_id: str) -> str:
     """Returns the durable storage_ref to save on VaultEvent.source_document_ref."""
     if not _blob_enabled():
-        return str(temp_path.relative_to(BASE_DIR))
+        # Prefer a project-relative ref so the database stays portable across
+        # machines, but UPLOADS_DIR is explicitly allowed to point anywhere
+        # (on Vercel it must — /tmp is the only writable path). relative_to()
+        # raises ValueError for any path outside BASE_DIR, which used to make
+        # every upload 500 under that configuration; fall back to an absolute
+        # ref instead. read()/delete() below handle both, since
+        # `BASE_DIR / "/abs/path"` already resolves to the absolute path.
+        try:
+            return str(temp_path.relative_to(BASE_DIR))
+        except ValueError:
+            return str(temp_path)
 
     import vercel.blob as blob
 
