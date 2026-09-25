@@ -61,6 +61,17 @@ class EventCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class DocumentRead(BaseModel):
+    """One stored file within an event. A real lease is ~25 of these under a
+    single 'lease signed' entry — see app/models.py:VaultDocument."""
+
+    id: int
+    original_filename: Optional[str]
+    triage_category: str
+    extraction_status: str
+    extraction_note: Optional[str] = None
+
+
 class EventRead(BaseModel):
     id: int
     event_type: str
@@ -70,6 +81,7 @@ class EventRead(BaseModel):
     notes: Optional[str]
     source_document_ref: Optional[str] = None
     original_filename: Optional[str] = None
+    documents: list[DocumentRead] = []
 
 
 class ExtractionInfo(BaseModel):
