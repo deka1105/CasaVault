@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session
 
-from app.agent import AgentUnavailable, ask_agent
+from app.agent import AgentUnavailable, AgentUpstreamError, ask_agent
 from app.database import get_session
 from app.models import Vault
 from app.rtc import handoff_for_zip
@@ -25,24 +25,47 @@ def ask(vault_id: str, payload: AskRequest, request: Request, session: Session =
         raise HTTPException(status_code=404, detail="vault not found")
 
     table = request.app.state.statutes
+    handoff = handoff_for_zip(table.right_to_counsel, vault.zip_code)
 
+    # Three distinct safe outcomes. None of them ever guesses; saying which
+    # one happened is the difference between a user trusting the refusal and
+    # a user filing a bug report about it.
     try:
         result = ask_agent(payload.question, payload.party, vault_id, session, table)
     except AgentUnavailable:
-        result = None
+        return AskResponse(
+            refusal=(
+                "The grounded agent isn't configured on this deployment, so I can't "
+                "answer from your vault or the statute table. I won't guess."
+            ),
+            handoff=handoff,
+            unavailable=True,
+        )
+    except AgentUpstreamError:
+        logger.warning("agent upstream unavailable for vault %s", vault_id)
+        return AskResponse(
+            refusal=(
+                "I couldn't reach the language model just now, so I have no grounded "
+                "answer to give you. This is a temporary service problem on our side, "
+                "not a limit on what your record says — try again in a moment."
+            ),
+            handoff=handoff,
+            unavailable=True,
+        )
     except Exception:
         logger.exception("agent call failed for vault %s", vault_id)
-        result = None
-
-    if result is None or not result.grounded:
-        refusal = (
-            result.refusal_reason
-            if result is not None
-            else "The grounded agent isn't configured yet, so I can't answer from your vault or the statute table. I won't guess."
-        )
         return AskResponse(
-            refusal=refusal,
-            handoff=handoff_for_zip(table.right_to_counsel, vault.zip_code),
+            refusal=(
+                "Something went wrong answering that, so I won't offer a guess. "
+                "Your record is unaffected."
+            ),
+            handoff=handoff,
+            unavailable=True,
         )
+
+    if not result.grounded:
+        # The designed behaviour: the question can't be grounded in the vault
+        # or the statute table, so the agent declines and routes to a human.
+        return AskResponse(refusal=result.refusal_reason, handoff=handoff)
 
     return AskResponse(answer=result.answer, citation=result.citation_display)
