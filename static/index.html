@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CasaVault</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CasaVault — a statute-aware record of your tenancy</title>
+  <meta name="description" content="Upload a lease, log what happens, and get flags with citations to Philadelphia and Pennsylvania law. Rights information, not legal advice.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A0%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -11,83 +12,210 @@
   <header class="site-header">
     <div class="brand">
       <span class="brand-mark">CasaVault</span>
-      <span class="disclaimer">Rights information, not legal advice.</span>
+      <span class="disclaimer">Rights information, not legal advice · Philadelphia &amp; PA</span>
     </div>
     <div id="auth-area" class="auth-area" hidden>
-      <button id="sign-in-btn" class="btn btn-secondary btn-small">Sign in</button>
+      <button id="sign-in-btn" class="btn btn-secondary btn-small" type="button">Sign in</button>
       <div id="user-button-mount" hidden></div>
-      <p id="auth-error" class="error" hidden></p>
     </div>
   </header>
 
   <main id="app">
-    <section id="my-vaults" class="card" hidden>
-      <h2>Your vaults</h2>
-      <ul id="my-vaults-list"></ul>
+    <p id="auth-error" class="error" hidden></p>
+
+    <!-- ============================ LANDING ============================ -->
+    <section id="landing" hidden>
+      <div class="card hero">
+        <h1>A statute-aware record of your tenancy</h1>
+        <p class="lede">
+          Neither side loses because they're wrong. They lose because they can't prove it.
+          Put the lease, the notices and the repair requests in one place — every one of them
+          adjudicated against Philadelphia and Pennsylvania law, with the section that produced
+          each finding shown next to it.
+        </p>
+        <ol class="pipeline">
+          <li><strong>Extract</strong> A model reads each document into a fixed schema. It never judges legality.</li>
+          <li><strong>Adjudicate</strong> A deterministic rules engine joins those facts against the statute table.</li>
+          <li><strong>Track</strong> Events that start statutory clocks become dated deadlines.</li>
+          <li><strong>Answer</strong> An agent answers from your vault and the table — or refuses.</li>
+        </ol>
+      </div>
+
+      <div class="grid-2" style="margin-top: 1.25rem;">
+        <section class="card">
+          <div class="section-head">
+            <h2>Start a vault</h2>
+            <p class="hint">No account needed</p>
+          </div>
+          <form id="create-vault-form">
+            <div class="field-row-group">
+              <label class="field field-grow">
+                <span>Label</span>
+                <input id="new-vault-label" type="text" placeholder="e.g. 123 Elm St, Apt 2" autocomplete="off">
+              </label>
+              <label class="field">
+                <span>Zip code</span>
+                <input id="new-vault-zip" type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="19121" autocomplete="postal-code">
+              </label>
+            </div>
+            <p class="hint" style="margin: -0.4rem 0 0.9rem; color: var(--ink-faint); font-size: 0.8rem;">
+              The zip decides your Right to Counsel routing — covered zips get the Philly Tenant
+              Hotline, everyone else gets PhillyTenant.org.
+            </p>
+            <button type="submit" class="btn btn-primary">Create vault</button>
+          </form>
+          <p id="create-error" class="error" hidden></p>
+
+          <div class="divider"><span>or open one you already have</span></div>
+
+          <form id="open-vault-form" class="inline-form">
+            <input id="open-vault-id" type="text" placeholder="vault id or share token" autocomplete="off" aria-label="Vault id or share token">
+            <button type="submit" class="btn btn-secondary">Open</button>
+          </form>
+          <p id="open-error" class="error" hidden></p>
+        </section>
+
+        <section id="my-vaults" class="card" hidden>
+          <div class="section-head">
+            <h2>Your vaults</h2>
+            <p class="hint">Vaults you created while signed in</p>
+          </div>
+          <ul id="my-vaults-list" class="vault-list"></ul>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>The statute table</h2>
+            <p class="hint" id="statute-count"></p>
+          </div>
+          <p class="hint" style="color: var(--ink-soft); font-size: 0.85rem;">
+            This is the product. Every flag and every agent answer resolves to one of these rows.
+            Rules still awaiting a pin cite are marked draft and never render to a user.
+          </p>
+          <ul id="statute-list" class="statute-list"></ul>
+        </section>
+      </div>
     </section>
 
-    <section id="landing" class="card landing-card">
-      <h1>A statute-aware record of your tenancy</h1>
-      <p class="lede">
-        Upload documents, log events, and get flags with citations —
-        Philadelphia &amp; PA law, adjudicated deterministically. No account
-        needed: a vault is addressed by its own link. Signing in just makes
-        it easier to find vaults you created — it never gates access.
-      </p>
-      <button id="create-vault-btn" class="btn btn-primary">Create a demo vault</button>
-
-      <div class="divider"><span>or open one you already have</span></div>
-
-      <form id="open-vault-form" class="inline-form">
-        <input id="open-vault-id" type="text" placeholder="vault id or share token" autocomplete="off">
-        <button type="submit" class="btn btn-secondary">Open</button>
-      </form>
-    </section>
-
-    <section id="vault-view" class="card" hidden>
+    <!-- =========================== VAULT VIEW ========================== -->
+    <section id="vault-view" hidden>
       <div id="rtc-banner" class="banner" hidden></div>
 
-      <div class="vault-header">
-        <h1 id="vault-label"></h1>
-        <div class="segmented" id="party-toggle">
-          <label>
-            <input type="radio" name="party" value="tenant" checked>
-            <span>Tenant view</span>
-          </label>
-          <label>
-            <input type="radio" name="party" value="landlord">
-            <span>Landlord view</span>
-          </label>
+      <div class="card">
+        <div class="vault-header">
+          <div class="vault-title">
+            <h1 id="vault-label"></h1>
+            <div class="vault-meta">
+              <span id="vault-mode"></span>
+              <span class="dot" aria-hidden="true">·</span>
+              <span id="vault-created"></span>
+            </div>
+          </div>
+          <div class="segmented" id="party-toggle" role="radiogroup" aria-label="Whose side to read the rules from">
+            <label>
+              <input type="radio" name="party" value="tenant" checked>
+              <span>Tenant view</span>
+            </label>
+            <label>
+              <input type="radio" name="party" value="landlord">
+              <span>Landlord view</span>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <div id="owner-controls" class="owner-controls">
-        <div class="field-row">
-          <span class="field-label">Share link (read-only, counterparty view)</span>
-          <a id="share-link" class="share-link" href="#" target="_blank"></a>
+        <div id="owner-controls" class="toolbar" hidden>
+          <div style="min-width: 0;">
+            <span class="field-label">Read-only share link for the other side</span>
+            <a id="share-link" class="share-link" href="#" target="_blank" rel="noopener"></a>
+          </div>
+          <div class="actions">
+            <button id="copy-share-btn" class="btn btn-secondary btn-small" type="button">Copy link</button>
+            <a id="evidence-link" class="btn btn-secondary btn-small" href="#" target="_blank" rel="noopener">Evidence packet</a>
+          </div>
         </div>
-        <a id="evidence-link" class="btn btn-secondary btn-small" href="#" target="_blank">Open printable evidence packet</a>
+
+        <div id="counterparty-controls" class="toolbar" hidden>
+          <div>
+            <span class="field-label">Counterparty view</span>
+            <p id="ack-status" style="margin: 0; font-size: 0.88rem;"></p>
+          </div>
+          <div class="actions">
+            <a id="share-evidence-link" class="btn btn-secondary btn-small" href="#" target="_blank" rel="noopener">Evidence packet</a>
+            <button id="acknowledge-btn" class="btn btn-primary btn-small" type="button">Acknowledge receipt</button>
+          </div>
+        </div>
+        <p id="vault-error" class="error" hidden></p>
       </div>
 
-      <div id="counterparty-controls" class="owner-controls" hidden>
-        <p id="ack-status" class="field-label"></p>
-        <button id="acknowledge-btn" class="btn btn-primary btn-small">Acknowledge receipt of this vault</button>
+      <div class="grid-2">
+        <section class="card">
+          <div class="section-head">
+            <h2>Findings</h2>
+            <p class="hint">Every one cites the section that produced it</p>
+          </div>
+          <ul id="findings-list" class="finding-list"></ul>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>Statutory deadlines</h2>
+            <p class="hint">Clocks this record has started</p>
+          </div>
+          <div class="table-wrap">
+            <table id="deadlines-table">
+              <thead><tr><th class="num">Due</th><th>What is owed</th><th>Status</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
       </div>
 
-      <section id="event-form-section" class="subcard">
-        <h2>Log an event</h2>
+      <section id="ask-section" class="card ask-card" hidden>
+        <div class="section-head">
+          <h2>Ask this vault</h2>
+          <p class="hint">Answers come from your record and the statute table only — never from model knowledge</p>
+        </div>
+        <form id="ask-form" class="ask-form">
+          <div class="ask-row">
+            <textarea id="ask-question" rows="2" placeholder="e.g. How long does he have to return my deposit?" aria-label="Your question"></textarea>
+            <button id="ask-btn" type="submit" class="btn btn-primary">Ask</button>
+          </div>
+          <div class="chips" id="ask-suggestions"></div>
+        </form>
+        <div id="ask-answer" hidden></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Timeline</h2>
+          <p class="hint">Everything recorded in this vault, in order</p>
+        </div>
+        <div class="table-wrap">
+          <table id="events-table">
+            <thead><tr><th class="num">Date</th><th>Event</th><th>Notes</th><th>Extracted facts</th><th>Document</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="event-form-section" class="card" hidden>
+        <div class="section-head">
+          <h2>Add to the record</h2>
+          <p class="hint">Upload a document and it is read, adjudicated and filed automatically</p>
+        </div>
         <form id="event-form">
           <div class="field-row-group">
             <label class="field">
               <span>Type</span>
               <select id="event-type">
                 <option value="document_upload">Document upload</option>
+                <option value="lease_signed">Lease signed</option>
+                <option value="move_in">Move in</option>
                 <option value="repair_requested">Repair requested</option>
                 <option value="notice_received">Notice received</option>
                 <option value="inspection">Inspection</option>
                 <option value="payment">Payment</option>
                 <option value="photo">Photo</option>
-                <option value="move_in">Move in</option>
                 <option value="move_out">Move out</option>
               </select>
             </label>
@@ -97,28 +225,29 @@
             </label>
             <label class="field field-grow">
               <span>Notes</span>
-              <input id="event-notes" type="text" placeholder="optional">
+              <input id="event-notes" type="text" placeholder="optional" autocomplete="off">
             </label>
           </div>
 
           <label class="field" id="event-file-label" hidden>
             <span>File</span>
-            <input id="event-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.txt,.docx">
+            <input id="event-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.txt">
+            <span class="hint-inline" id="upload-hint" style="font-size: 0.78rem; color: var(--ink-faint); text-transform: none; letter-spacing: 0; font-weight: 400;"></span>
           </label>
 
           <fieldset id="facts-fields" class="facts-grid">
-            <legend>Known facts <span class="hint-inline">— only fill in what you know, leave the rest blank</span></legend>
+            <legend>Known facts <span class="hint-inline">— fill in only what you know</span></legend>
 
             <label class="field">
               <span>Deposit amount ($)</span>
               <input type="number" step="0.01" min="0" name="fact:deposit_amount" data-fact-type="number">
             </label>
             <label class="field">
-              <span>Deposit (as months' rent)</span>
+              <span>Deposit (months' rent)</span>
               <input type="number" step="0.1" min="0" name="fact:deposit_months" data-fact-type="number">
             </label>
             <label class="field">
-              <span>Deposit currently held (months' rent)</span>
+              <span>Deposit held now (months)</span>
               <input type="number" step="0.1" min="0" name="fact:deposit_held_months" data-fact-type="number">
             </label>
             <label class="field">
@@ -126,7 +255,7 @@
               <input type="number" step="1" min="1" name="fact:tenancy_year" data-fact-type="number">
             </label>
             <label class="field">
-              <span>Total years of tenancy so far</span>
+              <span>Total years of tenancy</span>
               <input type="number" step="1" min="0" name="fact:tenancy_years" data-fact-type="number">
             </label>
             <label class="field">
@@ -135,96 +264,66 @@
             </label>
 
             <label class="field">
-              <span>Deposit increased with a rent increase</span>
+              <span>Deposit raised with the rent</span>
               <select name="fact:deposit_increased" data-fact-type="bool">
-                <option value="">Not stated</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option>
               </select>
             </label>
             <label class="field">
-              <span>Lease waives your deposit rights</span>
+              <span>Lease waives deposit rights</span>
               <select name="fact:clause_waives_deposit_rights" data-fact-type="bool">
-                <option value="">Not stated</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option>
               </select>
             </label>
             <label class="field">
               <span>Landlord has a valid rental license</span>
               <select name="fact:landlord_rental_license_valid" data-fact-type="bool">
-                <option value="">Not stated</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option>
               </select>
             </label>
             <label class="field">
-              <span>Certificate of Rental Suitability provided at signing</span>
+              <span>Certificate of Rental Suitability given</span>
               <select name="fact:certificate_of_rental_suitability_provided" data-fact-type="bool">
-                <option value="">Not stated</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option>
               </select>
             </label>
             <label class="field">
-              <span>Lease waives implied warranty of habitability</span>
+              <span>Lease waives habitability warranty</span>
               <select name="fact:waives_implied_warranty_of_habitability" data-fact-type="bool">
-                <option value="">Not stated</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option>
               </select>
             </label>
             <label class="field">
-              <span>Locked out or utilities shut off by landlord</span>
+              <span>Locked out / utilities shut off</span>
               <select name="fact:lockout_or_utility_shutoff" data-fact-type="bool">
-                <option value="">Not stated</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option>
               </select>
             </label>
             <label class="field">
-              <span>Written forwarding address provided (move-out)</span>
+              <span>Written forwarding address given</span>
               <select name="fact:forwarding_address_provided" data-fact-type="bool">
-                <option value="">Not stated</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option>
               </select>
             </label>
           </fieldset>
 
           <details id="advanced-facts">
-            <summary>Advanced: add raw JSON facts too</summary>
+            <summary>Advanced — add raw JSON facts</summary>
             <textarea id="event-facts-advanced" rows="2" placeholder='{"custom_key": "value"}'></textarea>
           </details>
 
-          <button type="submit" class="btn btn-primary">Add event</button>
+          <div class="actions" style="margin-top: 0.9rem;">
+            <button id="event-submit" type="submit" class="btn btn-primary">Add to record</button>
+          </div>
         </form>
         <p id="event-error" class="error" hidden></p>
       </section>
 
-      <section class="subcard">
-        <h2>Timeline</h2>
-        <table id="events-table">
-          <thead><tr><th>Date</th><th>Type</th><th>Notes</th><th>Document</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <section class="subcard">
-        <h2>Flags</h2>
-        <table id="flags-table">
-          <thead><tr><th>Severity</th><th>Finding</th><th>Citation</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <section class="subcard">
-        <h2>Deadlines</h2>
-        <table id="deadlines-table">
-          <thead><tr><th>Due</th><th>Description</th><th>Status</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </section>
+      <p class="footnote">
+        CasaVault gives rights information, not legal advice, and does not create a
+        lawyer–client relationship. For advice about your own situation, contact the
+        Philly Tenant Hotline at (267) 443-2500 or PhillyTenant.org.
+      </p>
     </section>
   </main>
 
