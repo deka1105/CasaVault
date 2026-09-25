@@ -57,7 +57,20 @@ async function initAuth() {
   }
 
   qs("auth-area").hidden = false;
-  qs("sign-in-btn").addEventListener("click", () => clerk.openSignIn());
+  qs("sign-in-btn").addEventListener("click", () => {
+    try {
+      clerk.openSignIn();
+    } catch (err) {
+      // openSignIn() itself is synchronous in the SDK, but surface any
+      // failure visibly instead of it silently doing nothing — this was
+      // previously unguarded, and "click does nothing, no visible error"
+      // is exactly the failure mode that's impossible to diagnose blind.
+      console.error("Clerk openSignIn failed", err);
+      const el = qs("auth-error");
+      el.textContent = "Sign-in failed to open — see browser console for details.";
+      el.hidden = false;
+    }
+  });
   clerk.addListener(() => updateAuthUI());
   updateAuthUI();
 }
