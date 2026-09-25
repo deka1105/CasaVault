@@ -8,10 +8,12 @@ The full pipeline is built and live-verified end to end: upload a document →
 Gemini extracts facts → rules engine flags them with citations → grounded
 agent answers questions over the vault + statute table, citing or refusing.
 Also done: share link, counterparty acknowledgement, evidence packet, RTC
-zip-check, document upload/download, front end. This is a hackathon build
-(LexHack 2026) with a hard submission deadline of **Sun Sep 27, 2026, 5:00 PM
-EDT** — read `PLAN.md`'s build-order table before starting any work session
-to know what day/gate we're against.
+zip-check, document upload/download, front end. **Deployed and verified
+live at https://casavault.vercel.app** (Postgres + Blob persistence proven
+against the real deployment; see the Vercel deployment section). This is a
+hackathon build (LexHack 2026) with a hard submission deadline of **Sun Sep
+27, 2026, 5:00 PM EDT** — read `PLAN.md`'s build-order table before starting
+any work session to know what day/gate we're against.
 
 **Gemini free-tier rate limit — read this before doing more live testing.**
 The configured key hit `20 requests per day on Free Tier` for
