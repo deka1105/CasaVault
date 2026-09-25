@@ -55,6 +55,12 @@ def classify_extraction_error(exc: Exception) -> Exception:
     """Map a provider exception onto our own taxonomy. Matched on text, not
     class: google-genai raises these from private _gaos.* modules whose import
     paths are not a stable API."""
+    # Already classified (including our own no-key / unsupported-type cases):
+    # never re-derive from text, or a message that happens to contain a word
+    # like "connection" would be reclassified into the wrong bucket.
+    if isinstance(exc, (ExtractionUnavailable, ExtractionUnsupported, ExtractionRateLimited, ExtractionUpstreamError)):
+        return exc
+
     text = f"{getattr(exc, 'code', '')} {getattr(exc, 'status_code', '')} {exc}".lower()
     if any(m in text for m in _RATE_LIMIT_MARKERS):
         return ExtractionRateLimited(str(exc))
