@@ -172,6 +172,7 @@ class IncidentDraft(BaseModel):
     subject: str
     body: str
     to: Optional[str] = None
+    cc: Optional[str] = None
     mailto: str
 
 

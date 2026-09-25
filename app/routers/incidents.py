@@ -125,7 +125,7 @@ def build_draft(incident: Incident, address: str, reporter: str, cc: str | None 
 
     to = (incident.management_email or "").strip()
     mailto = f"mailto:{quote(to)}?{urlencode(params, quote_via=quote)}"
-    return IncidentDraft(subject=subject, body=body, to=to or None, mailto=mailto)
+    return IncidentDraft(subject=subject, body=body, to=to or None, cc=cc or None, mailto=mailto)
 
 
 def _require_vault(vault_id: str, session: Session) -> Vault:
