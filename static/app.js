@@ -387,14 +387,16 @@ async function renderRtcBanner() {
 async function refreshData() {
   clearError($("vault-error"));
   try {
-    const [events, flags, deadlines] = await Promise.all([
+    const party = encodeURIComponent(state.party);
+    const [events, report, deadlines] = await Promise.all([
       api(vaultPath("/events")),
-      api(vaultPath("/flags")),
+      // The full three-state picture, not just what fired.
+      api(`${vaultPath("/adjudication")}?party=${party}`),
       // Clocks are party-framed server-side, same as flags.
-      api(`${vaultPath("/deadlines")}?party=${encodeURIComponent(state.party)}`),
+      api(`${vaultPath("/deadlines")}?party=${party}`),
     ]);
     renderEvents(events);
-    renderFindings(flags);
+    renderAdjudication(report);
     renderDeadlines(deadlines);
   } catch (err) {
     // Previously this failure was only console.error'd, so a broken vault
