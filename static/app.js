@@ -709,44 +709,6 @@ function setupAsk() {
   });
 }
 
-/* --- statute table ------------------------------------------------------- */
-
-/* Clock rules (type: deadline) keep a {deadline} placeholder in their
- * framing that is only filled once an event actually starts the clock, so
- * printing the framing verbatim here leaked the raw template at the user.
- * Those rules carry their substance in clock/requires instead. */
-function statuteSummary(rule) {
-  if (rule.clock) {
-    const parts = [`Clock: ${rule.clock}`];
-    if (rule.requires) parts.push(`Requires: ${rule.requires}`);
-    return parts.join(" · ");
-  }
-  const framing = (rule.party_framing && rule.party_framing.tenant) || rule.detail || "";
-  return framing.replace(/\{[^}]*\}/g, "the deadline");
-}
-
-async function renderStatuteTable() {
-  let rules;
-  try {
-    rules = await api("/api/statutes");
-  } catch {
-    return;
-  }
-  $("statute-count").textContent = `${rules.length} verified rules`;
-  replaceChildren(
-    $("statute-list"),
-    rules.map((r) =>
-      el("li", { class: "statute" }, [
-        el("div", { class: "statute-head" }, [
-          el("span", { class: "cite", text: r.citation }),
-          el("span", { class: "statute-id", text: r.id }),
-        ]),
-        el("p", { text: statuteSummary(r) }),
-      ])
-    )
-  );
-}
-
 /* --- forms --------------------------------------------------------------- */
 
 function setupCreateVault() {
@@ -1044,8 +1006,7 @@ async function init() {
     showError($("open-error"), `That link did not resolve to a vault: ${err.message}`);
   }
 
-  // Non-blocking: neither should delay first paint of the vault.
-  void renderStatuteTable();
+  // Non-blocking: shouldn't delay first paint of the vault.
   void initAuth();
 }
 
