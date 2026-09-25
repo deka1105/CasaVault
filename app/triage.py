@@ -109,11 +109,18 @@ def plan(filenames: list[str], secondary_budget: int = DEFAULT_SECONDARY_BUDGET)
     across the set: whether to spend a request on the ninth addendum depends
     on how many were spent already.
     """
-    decisions: list[TriageDecision] = []
-    remaining = secondary_budget
+    categories = [classify(name) for name in filenames]
 
-    for name in filenames:
-        category = classify(name)
+    # Spend the secondary budget on the most promising addenda, not on
+    # whichever happened to sort first.
+    ranked = sorted(
+        (i for i, c in enumerate(categories) if c == SECONDARY),
+        key=lambda i: (-relevance(filenames[i]), i),
+    )
+    fund = set(ranked[:secondary_budget])
+
+    decisions: list[TriageDecision] = []
+    for i, (name, category) in enumerate(zip(filenames, categories)):
         if category == SKIP:
             decisions.append(
                 TriageDecision(
@@ -124,15 +131,22 @@ def plan(filenames: list[str], secondary_budget: int = DEFAULT_SECONDARY_BUDGET)
             )
         elif category == PRIORITY:
             decisions.append(TriageDecision(PRIORITY, True, "Read — carries the terms of this tenancy."))
-        elif remaining > 0:
-            remaining -= 1
+        elif i in fund:
             decisions.append(TriageDecision(SECONDARY, True, "Read — an addendum that may add terms or a waiver."))
         else:
             decisions.append(
                 TriageDecision(
                     SECONDARY,
                     False,
-                    "Stored, not read — reading budget for this upload was already spent on the main documents.",
+                    "Stored, not read — the reading budget for this upload went to the main documents.",
                 )
             )
     return decisions
+
+
+def relevance(filename: str) -> int:
+    name = (filename or "").lower()
+    for pattern, score in _SECONDARY_RELEVANCE:
+        if re.search(pattern, name):
+            return score
+    return 0
