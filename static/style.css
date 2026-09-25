@@ -789,11 +789,11 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 }
 
 .lp-hero-copy h1 {
-  font-size: clamp(1.95rem, 5vw, 3.1rem);
+  font-size: clamp(1.95rem, 4.4vw, 2.9rem);
   line-height: 1.12;
   letter-spacing: -0.02em;
   margin: 0 0 1rem;
-  max-width: 17ch;
+  max-width: 21ch;
 }
 .lp-hero-copy .lede { font-size: clamp(0.98rem, 1.6vw, 1.09rem); max-width: 56ch; }
 
@@ -966,3 +966,19 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* The hero CTAs are the one place full-width buttons are right. */
   .lp-cta .btn { width: 100%; }
 }
+
+
+/* The landing shows the whole statute table rather than a scroll-capped
+   panel: this is the "the statute table is the product" moment, and a list
+   clipped through the middle of a card reads as broken, not as scrollable.
+   The vault view keeps the cap, where it is a reference panel and the
+   findings are the point. */
+#landing .statute-scroll {
+  max-height: none;
+  overflow-y: visible;
+  padding-right: 0;
+}
+
+/* With "Your vaults" hidden (signed out — the common case) the lone form
+   card would otherwise stretch the full 1080px. */
+#start .grid-2 { max-width: 920px; }
