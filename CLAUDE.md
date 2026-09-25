@@ -119,6 +119,24 @@ tracker, and the agent are four thin entry points onto one engine.
   isn't something this session can complete unattended. Open
   `casavault.vercel.app`, click Sign in, and confirm "Your vaults" appears
   after — that's the one remaining check.
+- **Real bug, caught live via actual browser console output the user
+  reported**: clicking "Sign in" did nothing, no visible error. Root cause
+  had nothing to do with third-party cookies (the initial hypothesis,
+  disproven) — `clerk.browser.js`, when loaded via a plain `<script src>`
+  tag, **auto-initializes itself by reading `data-clerk-publishable-key`
+  off its own script tag**, synchronously, as it executes. `loadClerkScript()`
+  wasn't setting that attribute (it was written assuming the npm
+  `new Clerk(key)` constructor pattern instead). The failed auto-init threw
+  `Missing publishableKey` internally and left `window.Clerk` in a broken,
+  non-constructor state, so the later `new window.Clerk(...)` call threw
+  `TypeError: window.Clerk is not a constructor`. Fixed by setting
+  `data-clerk-publishable-key` on the script element before appending it,
+  and using the resulting `window.Clerk` directly as the pre-initialized
+  singleton (`clerk = window.Clerk; await clerk.load();`) instead of trying
+  to construct a new instance. **If Clerk ever seems to silently do
+  nothing again, check the browser console first** — this class of failure
+  (script auto-init succeeding or failing based on a DOM attribute) produces
+  no error visible from the Python side at all.
 - **Adding `Vault.owner_user_id` broke production vault creation immediately after this deployed** — real, caught live via `get_runtime_errors`, fixed same-session. Root cause, and this generalizes to **any future model field**: `SQLModel.metadata.create_all()` (`app/database.py:init_db`) only creates tables that don't exist yet; it never alters an existing table's columns. Locally this is invisible — the SQLite file gets deleted constantly during dev/testing, so it's always recreated fresh. Against the real, persistent Neon database it silently left the live `vault` table without the new column until a manual `ALTER TABLE vault ADD COLUMN owner_user_id VARCHAR` was run directly. **Any future SQLModel field addition needs the same manual `ALTER TABLE` against the live database before (or immediately after) deploying** — there is no migration tool wired up (Alembic or similar) to do this automatically. Given the deadline, this is an accepted manual step for now, not something to "fix properly" mid-hackathon.
 
 ## Document uploads (`app/documents.py`, `app/storage.py`, `app/routers/documents.py`)
