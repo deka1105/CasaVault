@@ -738,27 +738,68 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 
 /* =======================================================================
-   LANDING PAGE
-   The first thing anyone sees. Full-bleed bands rather than the vault
-   view's card column, but built from the same tokens and the same finding
-   components, so the preview in the hero is a faithful miniature of the
-   real output rather than a drawing of it.
+   SITE NAVIGATION
+   The detail lives on its own pages now, so every page carries the same
+   header. Written as plain HTML in each file rather than injected by JS:
+   four pages is less cost than a rendering step, and the nav is then there
+   with JavaScript off.
    ======================================================================= */
 
-.lp-section { padding-block: clamp(2.75rem, 7vw, 5rem); }
-.lp-band { background: var(--surface-sunk); border-block: 1px solid var(--line); }
-
-.lp-h2 {
-  font-size: clamp(1.4rem, 3vw, 1.95rem);
-  margin: 0 0 0.6rem;
-  max-width: 24ch;
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  align-items: center;
 }
-.lp-sub {
+.site-nav a {
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 500;
   color: var(--ink-soft);
-  max-width: 68ch;
-  margin: 0 0 1.6rem;
-  font-size: 0.97rem;
+  text-decoration: none;
+  white-space: nowrap;
 }
+.site-nav a:hover { background: var(--surface-sunk); color: var(--ink); }
+.site-nav a[aria-current="page"] { color: var(--ink); font-weight: 650; background: var(--surface-sunk); }
+
+a.brand { text-decoration: none; color: inherit; }
+
+.header-actions { display: flex; align-items: center; gap: 0.6rem; }
+
+@media (max-width: 720px) {
+  .site-header { gap: 0.5rem; }
+  .site-nav { order: 3; width: 100%; justify-content: flex-start; gap: 0; margin-top: 0.15rem; }
+  .site-nav a { padding: 0.35rem 0.55rem; font-size: 0.84rem; }
+  .brand .disclaimer { display: none; }
+}
+
+/* =======================================================================
+   PAGES — the landing, and the three content pages behind the nav.
+   Plain language, short lines, one idea per block.
+   ======================================================================= */
+
+.page { max-width: 760px; margin: 0 auto; padding: clamp(2rem, 6vw, 3.5rem) clamp(1rem, 4vw, 2rem) 4rem; }
+.page-wide { max-width: 1040px; }
+
+.page h1 {
+  font-size: clamp(1.8rem, 4.5vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+  max-width: 20ch;
+}
+.page h2 {
+  font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+  margin: 2.4rem 0 0.7rem;
+}
+.page h2:first-of-type { margin-top: 1.8rem; }
+.page h3 { font-size: 1rem; margin: 0 0 0.35rem; }
+.page p { font-size: 1rem; color: var(--ink-soft); max-width: 65ch; }
+.page p.intro { font-size: clamp(1.02rem, 2vw, 1.15rem); color: var(--ink); }
+.page ul, .page ol { max-width: 65ch; color: var(--ink-soft); padding-left: 1.25rem; }
+.page li { margin-bottom: 0.5rem; }
+.page strong { color: var(--ink); }
 
 .eyebrow {
   font-size: 0.74rem;
@@ -766,219 +807,105 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--accent);
-  margin: 0 0 0.9rem;
+  margin: 0 0 0.8rem;
 }
 
-/* --- hero --------------------------------------------------------------- */
+/* --- landing ------------------------------------------------------------ */
 
-.lp-hero {
-  padding-block: clamp(2.5rem, 7vw, 5.5rem);
-  background:
-    radial-gradient(60rem 30rem at 15% -10%, var(--accent-soft), transparent 70%),
-    var(--paper);
-  border-bottom: 1px solid var(--line);
-}
-.lp-hero-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: clamp(2rem, 5vw, 3.5rem);
-  align-items: center;
-}
-@media (min-width: 900px) {
-  .lp-hero-grid { grid-template-columns: 1.05fr 0.95fr; }
-}
+.home-hero { padding-block: clamp(2.25rem, 7vw, 4rem) clamp(1.5rem, 4vw, 2.5rem); }
+.home-hero h1 { max-width: 16ch; font-size: clamp(2rem, 5.5vw, 3rem); }
+.home-hero .intro { max-width: 52ch; }
 
-.lp-hero-copy h1 {
-  font-size: clamp(1.95rem, 4.4vw, 2.9rem);
-  line-height: 1.12;
-  letter-spacing: -0.02em;
-  margin: 0 0 1rem;
-  max-width: 21ch;
-}
-.lp-hero-copy .lede { font-size: clamp(0.98rem, 1.6vw, 1.09rem); max-width: 56ch; }
-
-.lp-cta { display: flex; flex-wrap: wrap; gap: 0.7rem; margin: 1.6rem 0 1.3rem; }
+.home-cta { display: flex; flex-wrap: wrap; gap: 0.7rem; margin: 1.5rem 0 0.9rem; }
 .btn-lg { font-size: 0.97rem; padding: 0.78rem 1.4rem; }
+.home-note { font-size: 0.86rem; color: var(--ink-faint); margin: 0; }
 
-.lp-trust {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 1.3rem;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-}
-.lp-trust li { display: flex; align-items: baseline; gap: 0.45rem; }
-.lp-trust li::before {
-  content: "✓";
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.8rem;
-}
-
-/* The example-output card. Reuses .finding / .rule-row / .cite / .tally so
-   it can never drift from what the product actually renders. */
-.lp-preview {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lift);
-  overflow: hidden;
-}
-.lp-preview-chrome {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.9rem;
-  background: var(--surface-sunk);
-  border-bottom: 1px solid var(--line);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-.lp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
-.lp-preview-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.85rem; }
-.lp-preview-body .tally { margin: 0; padding-bottom: 0.7rem; }
-.lp-preview-body .finding { margin: 0; }
-
-/* --- problem band ------------------------------------------------------- */
-
-.lp-problem { display: grid; gap: 1.4rem; }
-@media (min-width: 760px) {
-  .lp-problem { grid-template-columns: repeat(3, auto) 1fr; align-items: center; gap: 2.2rem; }
-}
-.lp-stat { display: flex; flex-direction: column; gap: 0.15rem; margin: 0; }
-.lp-stat strong {
-  font-family: var(--serif);
-  font-size: clamp(1.7rem, 4vw, 2.4rem);
-  line-height: 1;
-  color: var(--accent);
-}
-.lp-stat span { font-size: 0.82rem; color: var(--ink-soft); max-width: 22ch; }
-.lp-problem-line {
-  margin: 0;
-  font-family: var(--serif);
-  font-size: clamp(1.02rem, 2vw, 1.25rem);
-  line-height: 1.4;
-  max-width: 30ch;
-}
-@media (min-width: 760px) {
-  .lp-problem-line { border-left: 2px solid var(--accent-line); padding-left: 1.6rem; }
-}
-
-/* --- four stages -------------------------------------------------------- */
-
-.lp-steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.home-points {
   display: grid;
-  gap: 1.1rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
-  counter-reset: none;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.lp-steps li {
+.home-points li {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1.25rem;
+  margin: 0;
 }
-.lp-step-n {
+.home-points h2 { font-size: 1.02rem; margin: 0 0 0.4rem; font-family: var(--serif); }
+.home-points p { font-size: 0.9rem; margin: 0; }
+
+.home-band { background: var(--surface-sunk); border-block: 1px solid var(--line); }
+.home-section { padding-block: clamp(2rem, 5vw, 3rem); }
+
+.home-start { max-width: 620px; }
+
+/* --- content pages ------------------------------------------------------ */
+
+.steps { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1rem; }
+.steps li {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0.9rem;
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.15rem 1.25rem;
+  margin: 0;
+}
+.step-n {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 2rem; height: 2rem;
   border-radius: 50%;
   background: var(--accent);
   color: var(--accent-ink);
-  font-size: 0.78rem;
   font-weight: 700;
-  margin-bottom: 0.7rem;
+  font-size: 0.85rem;
 }
-.lp-steps h3 { margin: 0 0 0.4rem; font-size: 1.02rem; }
-.lp-steps p { margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
+.steps p { margin: 0; font-size: 0.93rem; }
 
-/* --- capability grid ---------------------------------------------------- */
-
-.lp-caps {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-}
-.lp-cap {
-  background: var(--surface);
-  border: 1px solid var(--line);
+.callout {
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
   border-radius: var(--radius);
-  padding: 1.25rem;
+  padding: 1.1rem 1.25rem;
+  margin: 1.6rem 0;
 }
-.lp-cap h3 { margin: 0 0 0.45rem; font-size: 1rem; }
-.lp-cap p { margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
+.callout p { margin: 0; color: var(--ink); font-size: 0.93rem; }
+.callout-plain { border-color: var(--line); background: var(--surface-sunk); }
 
-/* --- agent section ------------------------------------------------------ */
+.faq { margin-top: 1.5rem; }
+.faq > div {
+  border-top: 1px solid var(--line);
+  padding: 1.15rem 0;
+}
+.faq > div:last-child { border-bottom: 1px solid var(--line); }
+.faq h3 { margin-bottom: 0.4rem; }
+.faq p { margin: 0; font-size: 0.93rem; }
 
-.lp-agent { display: grid; gap: clamp(1.6rem, 4vw, 3rem); align-items: start; }
-@media (min-width: 900px) { .lp-agent { grid-template-columns: 1fr 1fr; } }
-.lp-agent-examples { display: flex; flex-direction: column; gap: 0.85rem; }
-.lp-agent-examples .answer { margin: 0; }
-
-/* --- limits ------------------------------------------------------------- */
-
-.lp-limits {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
+.next-page {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.7rem;
-  max-width: 78ch;
-}
-.lp-limits li {
-  padding-left: 1.5rem;
-  position: relative;
-  font-size: 0.92rem;
-  color: var(--ink-soft);
-}
-.lp-limits li::before {
-  content: "—";
-  position: absolute;
-  left: 0;
-  color: var(--ink-faint);
-}
-.lp-limits strong { color: var(--ink); }
-
-/* --- footer ------------------------------------------------------------- */
-
-.lp-footer {
-  padding-block: 2.5rem 3.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
   border-top: 1px solid var(--line);
 }
-.lp-footer p {
-  margin: 0;
-  max-width: 70ch;
-  font-size: 0.83rem;
-  color: var(--ink-faint);
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  background: var(--surface-sunk);
+  padding-block: 2rem 2.5rem;
 }
+.site-footer .wrap { display: grid; gap: 0.8rem; }
+.site-footer p { margin: 0; font-size: 0.83rem; color: var(--ink-faint); max-width: 68ch; }
+.site-footer nav { display: flex; flex-wrap: wrap; gap: 0.15rem; margin-left: -0.7rem; }
 
 @media (max-width: 560px) {
-  /* The hero CTAs are the one place full-width buttons are right. */
-  .lp-cta .btn { width: 100%; }
+  .home-cta .btn { width: 100%; }
 }
-
-
-/* The landing shows the whole statute table rather than a scroll-capped
-   panel: this is the "the statute table is the product" moment, and a list
-   clipped through the middle of a card reads as broken, not as scrollable.
-   The vault view keeps the cap, where it is a reference panel and the
-   findings are the point. */
-#landing .statute-scroll {
-  max-height: none;
-  overflow-y: visible;
-  padding-right: 0;
-}
-
-/* With "Your vaults" hidden (signed out — the common case) the lone form
-   card would otherwise stretch the full 1080px. */
-#start .grid-2 { max-width: 920px; }
