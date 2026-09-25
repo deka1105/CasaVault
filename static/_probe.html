@@ -1,17 +1,18 @@
 <!doctype html><meta charset="utf-8"><title>probe</title><body style="margin:0">
 <script>
-const widths=[320,360,390,414,768,1100,1440];const out=[];let i=0;
+const cases=[["/","landing"],["/?vault=bed991c56cb045f6b66125e45260533e","vault view"]];const out=[];let i=0;
 function next(){
-  if(i>=widths.length){document.title=out.join(" ;; ");return;}
-  const w=widths[i++];const f=document.createElement("iframe");
-  f.style.cssText="width:"+w+"px;height:5000px;border:0";f.src="/";
+  if(i>=cases.length){document.title=out.join(" ;; ");return;}
+  const [url,label]=cases[i++];const f=document.createElement("iframe");
+  f.style.cssText="width:1100px;height:1200px;border:0";f.src=url;
   document.body.appendChild(f);
   f.onload=()=>setTimeout(()=>{
-    const d=f.contentDocument,de=d.documentElement,vw=de.clientWidth;const bad=[];
-    d.querySelectorAll("*").forEach(n=>{const r=n.getBoundingClientRect();
-      if(r.width>0&&r.right>vw+1&&!n.closest(".table-wrap"))bad.push(n.tagName+"."+(n.className||"-"));});
-    out.push(w+"px: "+(de.scrollWidth<=vw+1?"CLEAN":"OVERFLOW +"+(de.scrollWidth-vw)+" ["+bad.slice(0,3).join("/")+"]"));
-    f.remove();next();},1600);
+    const d=f.contentDocument;
+    const L=d.getElementById("landing"), V=d.getElementById("vault-view");
+    const findings=d.getElementById("findings-list");
+    out.push(label+": landing="+(L.hidden?"hidden":"SHOWN")+" vault="+(V.hidden?"hidden":"SHOWN")
+      +" findings="+(findings?findings.children.length:0)+" statutes="+(d.getElementById("statute-list").children.length));
+    f.remove();next();},2500);
 }
 next();
 </script>
