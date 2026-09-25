@@ -501,7 +501,18 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .doc-list { display: flex; flex-direction: column; gap: 0.2rem; }
 .doc-row { display: flex; align-items: baseline; gap: 0.4rem; }
-.doc-row a { font-size: 0.83rem; overflow-wrap: anywhere; }
+.doc-row a {
+  font-size: 0.83rem;
+  /* One line per file. A 25-document lease in a narrow table column is
+     unreadable if every name wraps to four lines; the full name is on the
+     link's title attribute and in the downloaded file. */
+  display: inline-block;
+  max-width: 13rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
 .doc-unread {
   flex: none;
   font-size: 0.66rem;
