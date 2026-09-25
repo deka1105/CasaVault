@@ -27,7 +27,33 @@ function showVaultView() {
 // link. If /api/config reports no publishable key, none of this runs and
 // the app behaves exactly as it did before sign-in existed.
 
-function loadClerkScript(publishableKey) {
+function loadScript(src, attrs = {}) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.crossOrigin = "anonymous";
+    for (const [key, value] of Object.entries(attrs)) {
+      script.setAttribute(key, value);
+    }
+    script.onload = resolve;
+    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+// Clerk's publishable key is `pk_{test|live}_<base64(frontendApiDomain + "$")>`.
+// Decoding it gives the Frontend API domain, which also serves as an
+// npm-proxying CDN for Clerk's own packages — verified live via curl against
+// this exact domain (200s with real JS content), unlike generic jsdelivr,
+// which 404s for @clerk/ui's browser bundle (that package is published to npm
+// as per-component ESM files, with no flat dist/ui.browser.js).
+function clerkFrontendApiFromPublishableKey(publishableKey) {
+  const base64Part = publishableKey.replace(/^pk_(test|live)_/, "");
+  const padded = base64Part + "=".repeat((4 - (base64Part.length % 4)) % 4);
+  return atob(padded).replace(/\$+$/, "");
+}
+
+function loadClerkScripts(publishableKey) {
   // The CDN script tag has its OWN auto-init path, distinct from the npm
   // `new Clerk(key)` constructor pattern: it reads data-clerk-publishable-key
   // off its own <script> tag synchronously as it executes. Without that
@@ -36,15 +62,19 @@ function loadClerkScript(publishableKey) {
   // error ("Missing publishableKey" / "window.Clerk is not a constructor"),
   // not assumed. Setting the attribute lets its auto-init produce a ready
   // singleton directly, so we use that instead of `new window.Clerk(...)`.
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@6/dist/clerk.browser.js";
-    script.crossOrigin = "anonymous";
-    script.setAttribute("data-clerk-publishable-key", publishableKey);
-    script.onload = resolve;
-    script.onerror = () => reject(new Error("Failed to load Clerk"));
-    document.head.appendChild(script);
-  });
+  //
+  // clerk.load() also needs a UI components constructor (clerkUICtor) or it
+  // throws "Clerk was not loaded with Ui components" the first time any UI
+  // method (openSignIn, mountUserButton, ...) runs — confirmed live via
+  // assertComponentsReady's error, and via reading clerk.browser.js's actual
+  // source. @clerk/ui's browser bundle sets window.__internal_ClerkUICtor as
+  // a load-time side effect, so it must load, and finish, before that.
+  const fapi = clerkFrontendApiFromPublishableKey(publishableKey);
+  return loadScript(`https://${fapi}/npm/@clerk/ui@1/dist/ui.browser.js`).then(() =>
+    loadScript(`https://${fapi}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, {
+      "data-clerk-publishable-key": publishableKey,
+    })
+  );
 }
 
 async function initAuth() {
@@ -57,9 +87,9 @@ async function initAuth() {
   if (!config.clerk_publishable_key) return;
 
   try {
-    await loadClerkScript(config.clerk_publishable_key);
+    await loadClerkScripts(config.clerk_publishable_key);
     clerk = window.Clerk;
-    await clerk.load();
+    await clerk.load({ clerkUICtor: window.__internal_ClerkUICtor });
   } catch (err) {
     console.error("Clerk failed to load; continuing without sign-in", err);
     return;
