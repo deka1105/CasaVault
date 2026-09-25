@@ -433,18 +433,7 @@ function renderEvents(events) {
                 text: e.event_type === "document_upload" ? "nothing extracted" : "—",
               })
         ),
-        el(
-          "td",
-          {},
-          e.source_document_ref
-            ? el("a", {
-                href: `${vaultPath("/documents")}/${e.id}`,
-                target: "_blank",
-                rel: "noopener",
-                text: e.original_filename || "download",
-              })
-            : ""
-        ),
+        el("td", {}, renderEventDocuments(e)),
       ]);
     })
   );
@@ -920,12 +909,13 @@ function setupEventForm() {
     btn.textContent = isUpload ? "Reading document…" : "Saving…";
 
     try {
-      if (isUpload) reportExtraction((await uploadDocument()).extraction);
+      if (isUpload) reportExtraction(await uploadDocuments());
       else await createJsonEvent();
       $("event-form").reset();
       updateEventFormMode();
       await refreshData();
     } catch (err) {
+      setUploadProgress("");
       showError(errorEl, err.message.includes("JSON") ? "Advanced facts must be valid JSON." : err.message);
     } finally {
       btn.disabled = false;
