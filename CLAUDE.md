@@ -152,11 +152,16 @@ start or redeploy. Fixed by making both swappable, not by rearchitecting:
   covers every Gemini call timed this session (~90s max).
 - **Provisioning status** (team `shubham-ad-s-projects`, project `casavault`,
   id `prj_H5qOmZidImbAO138ZSbyPF8xNG4s`):
-  - ✅ Neon Postgres connected — `DATABASE_URL` and friends present in project
-    env vars. **Not yet live-verified** — nothing has made a real connection
-    to it (would need `DATABASE_URL`'s actual value via `vercel env pull` or
-    pasted directly; the MCP env-list API only returns redacted values for
-    sensitive vars).
+  - ✅ Neon Postgres connected, **live-verified**: table creation, insert, and
+    a JSON-column round-trip all succeeded against the real database.
+    **Found and fixed a real bug this way**: SQLAlchemy's bare
+    `postgresql://` scheme (exactly what Neon's dashboard hands out) silently
+    resolves to the `psycopg2` dialect, but this project installs `psycopg`
+    (v3) — `ModuleNotFoundError: No module named 'psycopg2'` at engine
+    creation. `app/database.py` now rewrites `postgresql://` →
+    `postgresql+psycopg://` before calling `create_engine`, so a
+    copy-pasted Neon connection string just works without the caller
+    needing to know SQLAlchemy driver syntax.
   - ✅ Vercel Blob connected, **private access, live-verified**: a real
     put/get/delete round-trip against the actual store succeeded from
     `app/storage.py`. **Note for next time**: the store must be created with
