@@ -83,7 +83,8 @@ async function render() {
 
   $("rules-deposit").replaceChildren(...deposit.map(ruleCard));
   $("rules-philly").replaceChildren(...philly.map(ruleCard));
-  $("rule-count").textContent = `— ${rules.length} rules in total`;
+  $("rule-count").textContent =
+    `${rules.length} rules, grouped below. Each one shows the law it comes from.`;
 }
 
 render();

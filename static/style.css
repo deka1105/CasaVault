@@ -826,7 +826,7 @@ a.brand { text-decoration: none; color: inherit; }
    measure cap and the list indent. */
 /* Scoped with .page so these beat `.page ul` (class + element), which
    otherwise wins on specificity and re-applies the 65ch prose cap. */
-.page .home-points, .page .steps {
+.page .home-points, .page .steps, .page .statute-list {
   max-width: none;
   padding-left: 0;
   list-style: none;
