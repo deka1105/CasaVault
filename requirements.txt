@@ -9,3 +9,4 @@ google-genai>=1.55.0
 python-dotenv>=1.0
 psycopg[binary]>=3.2
 vercel>=0.11.4
+clerk-backend-api>=7.0.0
