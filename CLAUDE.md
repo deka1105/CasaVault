@@ -382,6 +382,13 @@ real auth/accounts/password reset, any jurisdiction beyond Philadelphia/PA,
 ungrounded chat, notifications/email/SMS/payments/mobile app, file storage
 beyond local disk.
 
+**Exception, explicitly overridden by direct user request**: optional Clerk
+sign-in exists (see the sign-in section above) despite "real auth/accounts"
+being on this out-of-scope list. It was flagged as a scope change before
+building it. It does not become a general license to add more from this
+list without the same kind of explicit ask — still flag before building
+anything else here.
+
 If asked to add something from the "Out" list, flag that it's explicitly
 out of scope per `PLAN.md` before implementing it.
 
