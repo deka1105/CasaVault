@@ -1,52 +1,121 @@
-const state = { vaultId: null, shareToken: null, isOwner: true, party: "tenant" };
+/* CasaVault front end — plain HTML/JS, no build step.
+ *
+ * Two modes off the query string, one page:
+ *   ?vault=<id>    owner: full read/write
+ *   ?share=<token> counterparty: read-only
+ *
+ * Owner and counterparty read from DIFFERENT API surfaces. The share view
+ * never learns the vault id, because the vault id IS the write credential
+ * (see app/routers/share.py). Read-only is a property of which endpoints
+ * this page can reach, not of which buttons it hides.
+ */
+
+const state = {
+  vaultId: null,
+  shareToken: null,
+  party: "tenant",
+  vault: null,
+};
+
 let clerk = null;
 
-function qs(id) {
-  return document.getElementById(id);
+const $ = (id) => document.getElementById(id);
+const isOwner = () => Boolean(state.vaultId);
+
+/* --- DOM building -------------------------------------------------------
+ * Everything rendered from server data is built with createElement and
+ * textContent. The previous version assembled rows with innerHTML and
+ * interpolated notes, filenames, citations and vault labels straight in —
+ * all attacker-controlled (a filename is chosen by whoever uploads, and a
+ * share link is opened by the *other* party), so any of them could inject
+ * script into the counterparty's session. Never reintroduce innerHTML here.
+ */
+
+function el(tag, props = {}, children = []) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (value === null || value === undefined || value === false) continue;
+    if (key === "class") node.className = value;
+    else if (key === "text") node.textContent = value;
+    else if (key === "dataset") Object.assign(node.dataset, value);
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2).toLowerCase(), value);
+    else node.setAttribute(key, value === true ? "" : value);
+  }
+  for (const child of [].concat(children)) {
+    if (child === null || child === undefined) continue;
+    node.append(typeof child === "string" ? document.createTextNode(child) : child);
+  }
+  return node;
 }
+
+function replaceChildren(node, children) {
+  node.replaceChildren(...[].concat(children).filter(Boolean));
+}
+
+function emptyRow(colspan, message) {
+  return el("tr", {}, el("td", { colspan: String(colspan), class: "empty", text: message }));
+}
+
+function showError(node, message) {
+  node.textContent = message;
+  node.hidden = false;
+}
+
+function clearError(node) {
+  node.textContent = "";
+  node.hidden = true;
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+/* --- API ---------------------------------------------------------------- */
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `${res.status} ${res.statusText}`);
+    let detail = body.detail;
+    // FastAPI validation errors arrive as a list of objects; flatten so the
+    // UI never prints "[object Object]" at the user.
+    if (Array.isArray(detail)) detail = detail.map((d) => d.msg || String(d)).join("; ");
+    throw new Error(detail || `${res.status} ${res.statusText}`);
   }
-  return res.json();
+  return res.status === 204 ? null : res.json();
 }
 
-function showVaultView() {
-  qs("landing").hidden = true;
-  qs("my-vaults").hidden = true;
-  qs("vault-view").hidden = false;
+/** Path to this vault's data, on whichever surface the current mode uses. */
+function vaultPath(suffix = "") {
+  return isOwner()
+    ? `/api/vaults/${encodeURIComponent(state.vaultId)}${suffix}`
+    : `/api/vaults/by-share-token/${encodeURIComponent(state.shareToken)}${suffix}`;
 }
 
-// --- Optional sign-in (Clerk) -------------------------------------------
-// Sign-in never gates access — a vault's id/share_token remain the actual
-// access control (see app/models.py). It only lets a signed-in creator find
-// their own vaults later via "Your vaults" instead of needing to keep the
-// link. If /api/config reports no publishable key, none of this runs and
-// the app behaves exactly as it did before sign-in existed.
+/* --- optional sign-in (Clerk) -------------------------------------------
+ * Sign-in never gates access — the vault id / share token remain the actual
+ * access control. It only lets a creator find their own vaults later.
+ * If /api/config reports no publishable key, none of this runs.
+ */
 
 function loadScript(src, attrs = {}) {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = src;
     script.crossOrigin = "anonymous";
-    for (const [key, value] of Object.entries(attrs)) {
-      script.setAttribute(key, value);
-    }
+    for (const [key, value] of Object.entries(attrs)) script.setAttribute(key, value);
     script.onload = resolve;
     script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
     document.head.appendChild(script);
   });
 }
 
-// Clerk's publishable key is `pk_{test|live}_<base64(frontendApiDomain + "$")>`.
-// Decoding it gives the Frontend API domain, which also serves as an
-// npm-proxying CDN for Clerk's own packages — verified live via curl against
-// this exact domain (200s with real JS content), unlike generic jsdelivr,
-// which 404s for @clerk/ui's browser bundle (that package is published to npm
-// as per-component ESM files, with no flat dist/ui.browser.js).
+// pk_{test|live}_<base64(frontendApiDomain + "$")>. That domain also proxies
+// npm for Clerk's own packages, which is where @clerk/ui's browser bundle
+// lives — it is not on generic jsdelivr.
 function clerkFrontendApiFromPublishableKey(publishableKey) {
   const base64Part = publishableKey.replace(/^pk_(test|live)_/, "");
   const padded = base64Part + "=".repeat((4 - (base64Part.length % 4)) % 4);
@@ -54,21 +123,13 @@ function clerkFrontendApiFromPublishableKey(publishableKey) {
 }
 
 function loadClerkScripts(publishableKey) {
-  // The CDN script tag has its OWN auto-init path, distinct from the npm
-  // `new Clerk(key)` constructor pattern: it reads data-clerk-publishable-key
-  // off its own <script> tag synchronously as it executes. Without that
-  // attribute it throws internally and leaves window.Clerk in a broken,
-  // non-constructor state — confirmed live via a real browser console
-  // error ("Missing publishableKey" / "window.Clerk is not a constructor"),
-  // not assumed. Setting the attribute lets its auto-init produce a ready
-  // singleton directly, so we use that instead of `new window.Clerk(...)`.
-  //
-  // clerk.load() also needs a UI components constructor (clerkUICtor) or it
-  // throws "Clerk was not loaded with Ui components" the first time any UI
-  // method (openSignIn, mountUserButton, ...) runs — confirmed live via
-  // assertComponentsReady's error, and via reading clerk.browser.js's actual
-  // source. @clerk/ui's browser bundle sets window.__internal_ClerkUICtor as
-  // a load-time side effect, so it must load, and finish, before that.
+  // Two load-order requirements, both confirmed against the shipped bundle:
+  //   1. clerk.browser.js auto-initializes as it executes, reading
+  //      data-clerk-publishable-key off its own <script> tag. Without the
+  //      attribute it throws internally and leaves window.Clerk unusable.
+  //   2. @clerk/ui must finish loading FIRST — it sets
+  //      window.__internal_ClerkUICtor as a side effect, and clerk.load()
+  //      needs that or every UI method throws "not loaded with Ui components".
   const fapi = clerkFrontendApiFromPublishableKey(publishableKey);
   return loadScript(`https://${fapi}/npm/@clerk/ui@1/dist/ui.browser.js`).then(() =>
     loadScript(`https://${fapi}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, {
@@ -77,12 +138,42 @@ function loadClerkScripts(publishableKey) {
   );
 }
 
+/* Recovery for the "signed in, but the header still says Sign in" case.
+ *
+ * Derived by reading clerk.browser.js's own source, not guessed. Its OAuth
+ * popup handshake ends in `setActive({session, redirectUrl})`; setActive,
+ * when given a redirectUrl, starts a navigation and then does
+ * `if (isUnloading()) return;` — deliberately skipping the internal step
+ * (#eX) that assigns clerk.user/clerk.session AND emits to addListener
+ * subscribers, because the document is expected to be replaced by the
+ * navigation. If that navigation does not actually complete, the tab is left
+ * holding a Clerk instance whose client HAS the new signed-in session while
+ * clerk.user is still null and no listener will ever fire again.
+ *
+ * So: consult the client's sessions rather than clerk.user alone, and if a
+ * signed-in session exists that the instance hasn't adopted, call setActive
+ * WITHOUT a redirectUrl — that path skips the navigation branch and does run
+ * the assign-and-emit step.
+ */
+async function syncClerkSession() {
+  if (!clerk || clerk.user) return;
+  const sessions = clerk.client?.signedInSessions || clerk.client?.sessions || [];
+  const active = sessions.find((s) => s.status === "active") || sessions[0];
+  if (!active) return;
+  try {
+    await clerk.setActive({ session: active.id });
+  } catch (err) {
+    console.error("Clerk session sync failed", err);
+  }
+  updateAuthUI();
+}
+
 async function initAuth() {
   let config;
   try {
     config = await api("/api/config");
   } catch {
-    return;
+    return; // config endpoint unreachable: run fully anonymous
   }
   if (!config.clerk_publishable_key) return;
 
@@ -95,37 +186,59 @@ async function initAuth() {
     return;
   }
 
-  qs("auth-area").hidden = false;
-  qs("sign-in-btn").addEventListener("click", () => {
+  $("auth-area").hidden = false;
+  $("sign-in-btn").addEventListener("click", () => {
     try {
       clerk.openSignIn();
+      // The popup hands the session back by postMessage; see syncClerkSession
+      // for why that can land without ever updating this tab. Re-check for a
+      // while afterwards so the header can't get stuck showing "Sign in".
+      pollForSignIn();
     } catch (err) {
-      // openSignIn() itself is synchronous in the SDK, but surface any
-      // failure visibly instead of it silently doing nothing — this was
-      // previously unguarded, and "click does nothing, no visible error"
-      // is exactly the failure mode that's impossible to diagnose blind.
       console.error("Clerk openSignIn failed", err);
-      const el = qs("auth-error");
-      el.textContent = "Sign-in failed to open — see browser console for details.";
-      el.hidden = false;
+      showError($("auth-error"), "Sign-in failed to open. See the browser console for details.");
     }
   });
+
   clerk.addListener(() => updateAuthUI());
+  // Returning to this tab after completing sign-in elsewhere is exactly the
+  // moment the missed-emit case above becomes visible, so re-check there too.
+  window.addEventListener("focus", () => void syncClerkSession());
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) void syncClerkSession();
+  });
+
   updateAuthUI();
+}
+
+function pollForSignIn() {
+  const deadline = Date.now() + 90_000;
+  const tick = async () => {
+    if (clerk?.user || Date.now() > deadline) return;
+    await syncClerkSession();
+    if (!clerk?.user) setTimeout(tick, 1000);
+  };
+  setTimeout(tick, 1000);
 }
 
 function updateAuthUI() {
   const signedIn = Boolean(clerk && clerk.user);
-  qs("sign-in-btn").hidden = signedIn;
+  $("sign-in-btn").hidden = signedIn;
 
-  const mount = qs("user-button-mount");
+  const mount = $("user-button-mount");
   mount.hidden = !signedIn;
   if (signedIn && !mount.dataset.mounted) {
-    clerk.mountUserButton(mount);
-    mount.dataset.mounted = "1";
+    try {
+      clerk.mountUserButton(mount);
+      mount.dataset.mounted = "1";
+    } catch (err) {
+      // A throw here previously left the header with neither control.
+      console.error("Clerk mountUserButton failed", err);
+      mount.hidden = true;
+      $("sign-in-btn").hidden = false;
+    }
   }
-
-  refreshMyVaults();
+  void refreshMyVaults();
 }
 
 async function getAuthHeaders() {
@@ -134,170 +247,420 @@ async function getAuthHeaders() {
       const token = await clerk.session.getToken();
       if (token) return { Authorization: `Bearer ${token}` };
     } catch {
-      // fall through to anonymous
+      /* fall through to anonymous */
     }
   }
   return {};
 }
 
 async function refreshMyVaults() {
-  const section = qs("my-vaults");
-  const onLanding = qs("vault-view").hidden; // "your vaults" only makes sense on the browse screen
+  const section = $("my-vaults");
+  const onLanding = !$("landing").hidden;
   if (!clerk || !clerk.user || !onLanding) {
     section.hidden = true;
     return;
   }
   try {
-    const headers = await getAuthHeaders();
-    const vaults = await api("/api/vaults/mine", { headers });
-    qs("my-vaults-list").innerHTML =
-      vaults
-        .map((v) => `<li><a href="/?vault=${v.id}">${v.label || `Vault ${v.id}`}</a></li>`)
-        .join("") || "<li><em>No vaults yet — create one below.</em></li>";
+    const vaults = await api("/api/vaults/mine", { headers: await getAuthHeaders() });
+    replaceChildren(
+      $("my-vaults-list"),
+      vaults.length
+        ? vaults.map((v) =>
+            el("li", {}, el("a", { href: `/?vault=${encodeURIComponent(v.id)}`, text: v.label || `Vault ${v.id.slice(0, 8)}` }))
+          )
+        : el("li", { class: "empty", text: "No vaults yet — create one to get started." })
+    );
     section.hidden = false;
   } catch {
     section.hidden = true;
   }
 }
 
+/* --- views -------------------------------------------------------------- */
+
+function showLanding() {
+  $("landing").hidden = false;
+  $("vault-view").hidden = true;
+  void refreshMyVaults();
+}
+
+function showVaultView() {
+  $("landing").hidden = true;
+  $("my-vaults").hidden = true;
+  $("vault-view").hidden = false;
+}
+
 async function loadVaultById(id) {
-  const vault = await api(`/api/vaults/${id}`);
+  const vault = await api(`/api/vaults/${encodeURIComponent(id)}`);
   state.vaultId = vault.id;
-  state.shareToken = vault.share_token;
-  state.isOwner = true;
-  await renderVault(vault);
+  state.shareToken = null;
+  state.vault = vault;
+  await renderVault();
 }
 
 async function loadVaultByShareToken(token) {
-  const vault = await api(`/api/vaults/by-share-token/${token}`);
-  state.vaultId = vault.id;
+  const vault = await api(`/api/vaults/by-share-token/${encodeURIComponent(token)}`);
+  state.vaultId = null; // the share surface never yields it, by design
   state.shareToken = token;
-  state.isOwner = false;
-  await renderVault(vault);
+  state.vault = vault;
+  // The counterparty is the other side of the same rules, so open on the
+  // opposite framing by default.
+  state.party = "landlord";
+  const landlordRadio = document.querySelector('input[name="party"][value="landlord"]');
+  if (landlordRadio) landlordRadio.checked = true;
+  await renderVault();
 }
 
-async function renderVault(vault) {
+async function renderVault() {
+  const vault = state.vault;
   showVaultView();
-  qs("vault-label").textContent = vault.label || `Vault ${vault.id}`;
 
-  qs("owner-controls").hidden = !state.isOwner;
-  qs("event-form-section").hidden = !state.isOwner;
-  qs("counterparty-controls").hidden = state.isOwner;
+  $("vault-label").textContent = vault.label || (isOwner() ? `Vault ${state.vaultId.slice(0, 8)}` : "Shared vault");
+  $("vault-mode").textContent = isOwner() ? "You hold this vault" : "Shared with you · read-only";
+  $("vault-created").textContent = vault.created_at ? `Opened ${formatDate(vault.created_at)}` : "";
 
-  if (state.isOwner) {
-    const shareUrl = `${location.origin}/?share=${vault.share_token}`;
-    qs("share-link").href = shareUrl;
-    qs("share-link").textContent = shareUrl;
-    qs("evidence-link").href = `/api/vaults/${vault.id}/evidence`;
+  $("owner-controls").hidden = !isOwner();
+  $("event-form-section").hidden = !isOwner();
+  $("ask-section").hidden = !isOwner();
+  $("counterparty-controls").hidden = isOwner();
+
+  if (isOwner()) {
+    const shareUrl = `${location.origin}/?share=${encodeURIComponent(vault.share_token)}`;
+    const link = $("share-link");
+    link.href = shareUrl;
+    link.textContent = shareUrl;
+    renderAskSuggestions();
   } else {
-    qs("ack-status").textContent = vault.acknowledged_at
-      ? `Acknowledged at ${vault.acknowledged_at}`
-      : "Not yet acknowledged.";
-    qs("acknowledge-btn").disabled = Boolean(vault.acknowledged_at);
+    $("ack-status").textContent = vault.acknowledged_at
+      ? `Acknowledged ${formatDate(vault.acknowledged_at)}`
+      : "You have not acknowledged this record yet.";
+    $("acknowledge-btn").disabled = Boolean(vault.acknowledged_at);
+    $("share-evidence-link").href = `${vaultPath("/evidence")}?party=${state.party}`;
   }
+  updateEvidenceLink();
+  await Promise.all([renderRtcBanner(), refreshData()]);
+}
 
-  const banner = qs("rtc-banner");
-  if (vault.zip_code) {
-    try {
-      const rtc = await api(`/api/vaults/${vault.id}/rtc-check`);
-      banner.hidden = false;
-      banner.textContent =
-        rtc.route === "hotline"
-          ? `This zip is covered by Right to Counsel — call ${rtc.contact}.`
-          : `Not an RTC-covered zip — see ${rtc.contact} for help.`;
-    } catch {
-      banner.hidden = true;
-    }
-  } else {
+function updateEvidenceLink() {
+  const link = isOwner() ? $("evidence-link") : $("share-evidence-link");
+  link.href = `${vaultPath("/evidence")}?party=${encodeURIComponent(state.party)}`;
+}
+
+async function renderRtcBanner() {
+  const banner = $("rtc-banner");
+  if (!state.vault.zip_code) {
+    banner.hidden = true;
+    return;
+  }
+  try {
+    const rtc = await api(vaultPath("/rtc-check"));
+    const covered = rtc.route === "hotline";
+    banner.className = covered ? "banner" : "banner banner-caution";
+    replaceChildren(banner, [
+      el("strong", { text: covered ? "Right to Counsel covers this zip code. " : "This zip is outside Right to Counsel. " }),
+      covered
+        ? `You may qualify for a free lawyer in eviction court. Call ${rtc.contact}. ${rtc.eligibility || ""}`
+        : `Free legal help and self-help guides are at ${rtc.contact}.`,
+    ]);
+    banner.hidden = false;
+  } catch {
     banner.hidden = true;
   }
-
-  await refreshData();
 }
 
 async function refreshData() {
-  const [events, flags, deadlines] = await Promise.all([
-    api(`/api/vaults/${state.vaultId}/events`),
-    api(`/api/vaults/${state.vaultId}/flags`),
-    api(`/api/vaults/${state.vaultId}/deadlines`),
-  ]);
-  renderEvents(events);
-  renderFlags(flags);
-  renderDeadlines(deadlines);
+  clearError($("vault-error"));
+  try {
+    const [events, flags, deadlines] = await Promise.all([
+      api(vaultPath("/events")),
+      api(vaultPath("/flags")),
+      api(vaultPath("/deadlines")),
+    ]);
+    renderEvents(events);
+    renderFindings(flags);
+    renderDeadlines(deadlines);
+  } catch (err) {
+    // Previously this failure was only console.error'd, so a broken vault
+    // looked like an empty one.
+    showError($("vault-error"), `Could not load this vault: ${err.message}`);
+  }
 }
 
 function renderEvents(events) {
-  const tbody = qs("events-table").querySelector("tbody");
-  tbody.innerHTML =
-    events
-      .map((e) => {
-        const doc = e.source_document_ref
-          ? `<a href="/api/vaults/${state.vaultId}/documents/${e.id}" target="_blank">${e.original_filename || "view file"}</a>`
-          : "";
-        return `<tr><td>${e.occurred_at}</td><td>${e.event_type}</td><td>${e.notes || ""}</td><td>${doc}</td></tr>`;
-      })
-      .join("") || "<tr><td colspan='4'><em>No events yet.</em></td></tr>";
+  const tbody = $("events-table").querySelector("tbody");
+  if (!events.length) {
+    replaceChildren(tbody, emptyRow(5, "Nothing recorded yet."));
+    return;
+  }
+  replaceChildren(
+    tbody,
+    events.map((e) => {
+      const facts = Object.entries(e.facts || {});
+      return el("tr", {}, [
+        el("td", { class: "num", text: formatDate(e.occurred_at) }),
+        el("td", {}, el("strong", { text: e.event_type.replace(/_/g, " ") })),
+        el("td", { text: e.notes || "" }),
+        el(
+          "td",
+          {},
+          facts.length
+            ? facts.map(([k, v]) => el("div", { class: "cite", text: `${k}: ${v}` }))
+            : el("span", { class: "empty", text: "—" })
+        ),
+        el(
+          "td",
+          {},
+          e.source_document_ref
+            ? el("a", {
+                href: `${vaultPath("/documents")}/${e.id}`,
+                target: "_blank",
+                rel: "noopener",
+                text: e.original_filename || "download",
+              })
+            : ""
+        ),
+      ]);
+    })
+  );
 }
 
-function renderFlags(flags) {
-  const tbody = qs("flags-table").querySelector("tbody");
-  tbody.innerHTML =
-    flags
-      .map((f) => {
-        const message = state.party === "landlord" ? f.message_landlord : f.message_tenant;
-        return `<tr class="severity-${f.severity}"><td><span class="severity-badge">${f.severity}</span></td><td>${message || f.statute_id}</td><td>${f.citation}</td></tr>`;
-      })
-      .join("") || "<tr><td colspan='3'><em>No flags yet.</em></td></tr>";
+function framingFor(flag) {
+  const primary = state.party === "landlord" ? flag.message_landlord : flag.message_tenant;
+  return primary || flag.message_tenant || flag.message_landlord || flag.statute_id;
+}
+
+function renderFindings(flags) {
+  const list = $("findings-list");
+  if (!flags.length) {
+    replaceChildren(
+      list,
+      el("li", { class: "empty", text: "No findings yet. Upload a lease or record what you know and the rules engine runs automatically." })
+    );
+    return;
+  }
+  const order = { violation: 0, caution: 1 };
+  const sorted = [...flags].sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9));
+  replaceChildren(
+    list,
+    sorted.map((f) =>
+      el("li", { class: `finding finding-${f.severity}` }, [
+        el("div", { class: "finding-head" }, el("span", { class: "badge", text: f.severity })),
+        el("p", { class: "finding-body", text: framingFor(f) }),
+        el("span", { class: "cite", text: f.citation }),
+      ])
+    )
+  );
 }
 
 function renderDeadlines(deadlines) {
-  const tbody = qs("deadlines-table").querySelector("tbody");
-  tbody.innerHTML =
-    deadlines
-      .map((d) => `<tr><td>${d.due_date}</td><td>${d.description}</td><td>${d.resolved ? "resolved" : "open"}</td></tr>`)
-      .join("") || "<tr><td colspan='3'><em>No deadlines tracked.</em></td></tr>";
+  const tbody = $("deadlines-table").querySelector("tbody");
+  if (!deadlines.length) {
+    replaceChildren(tbody, emptyRow(3, "No statutory clocks started."));
+    return;
+  }
+  replaceChildren(
+    tbody,
+    deadlines.map((d) =>
+      el("tr", {}, [
+        el("td", { class: "num", text: formatDate(d.due_date) }),
+        el("td", { text: d.description }),
+        el("td", { text: d.resolved ? "resolved" : "open" }),
+      ])
+    )
+  );
 }
 
-function setupPartyToggle() {
-  document.querySelectorAll('input[name="party"]').forEach((input) => {
-    input.addEventListener("change", (e) => {
-      state.party = e.target.value;
-      refreshData();
-    });
+/* --- the grounded agent -------------------------------------------------- */
+
+const ASK_SUGGESTIONS = {
+  tenant: [
+    "How long does he have to return my deposit?",
+    "What did my landlord fail to give me when I signed?",
+    "Will I win in court?",
+  ],
+  landlord: [
+    "How long do I have to return the deposit?",
+    "What am I required to give a tenant at signing?",
+    "Will I win in court?",
+  ],
+};
+
+function renderAskSuggestions() {
+  replaceChildren(
+    $("ask-suggestions"),
+    (ASK_SUGGESTIONS[state.party] || []).map((q) =>
+      el("button", {
+        type: "button",
+        class: "chip",
+        text: q,
+        onclick: () => {
+          $("ask-question").value = q;
+          $("ask-form").requestSubmit();
+        },
+      })
+    )
+  );
+}
+
+function renderAnswer(result) {
+  const panel = $("ask-answer");
+  panel.hidden = false;
+
+  if (result.refusal) {
+    // A refusal is the designed behaviour, not an error state (PLAN.md:
+    // "That last refusal goes in the demo video. It is the point.").
+    const handoff = result.handoff || {};
+    panel.className = "answer answer-refusal";
+    replaceChildren(panel, [
+      el("div", { class: "answer-label", text: "Not answerable from this record" }),
+      el("p", { class: "answer-text", text: result.refusal }),
+      el("div", { class: "handoff" }, [
+        el("strong", { text: "Talk to a human: " }),
+        handoff.route === "hotline"
+          ? `Philly Tenant Hotline, ${handoff.contact}. ${handoff.eligibility || ""}`
+          : el("a", { href: handoff.contact || "https://phillytenant.org", target: "_blank", rel: "noopener", text: handoff.contact || "phillytenant.org" }),
+      ]),
+    ]);
+    return;
+  }
+
+  panel.className = "answer";
+  replaceChildren(panel, [
+    el("div", { class: "answer-label", text: "Answer, grounded in this vault" }),
+    el("p", { class: "answer-text", text: result.answer }),
+    result.citation ? el("span", { class: "cite", text: `Source: ${result.citation}` }) : null,
+  ]);
+}
+
+function setupAsk() {
+  $("ask-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const question = $("ask-question").value.trim();
+    if (!question || !isOwner()) return;
+
+    const btn = $("ask-btn");
+    const panel = $("ask-answer");
+    btn.disabled = true;
+    btn.textContent = "Asking…";
+    panel.hidden = false;
+    panel.className = "answer";
+    replaceChildren(panel, [
+      el("div", { class: "answer-label", text: "Working" }),
+      el("p", { class: "answer-text" }, [el("span", { class: "spinner" }), " Checking your record and the statute table…"]),
+    ]);
+
+    try {
+      const result = await api(vaultPath("/ask"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, party: state.party }),
+      });
+      renderAnswer(result);
+    } catch (err) {
+      panel.className = "answer answer-refusal";
+      replaceChildren(panel, [
+        el("div", { class: "answer-label", text: "Could not ask" }),
+        el("p", { class: "answer-text", text: err.message }),
+      ]);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Ask";
+    }
   });
 }
 
+/* --- statute table ------------------------------------------------------- */
+
+async function renderStatuteTable() {
+  let rules;
+  try {
+    rules = await api("/api/statutes");
+  } catch {
+    return;
+  }
+  $("statute-count").textContent = `${rules.length} verified rules`;
+  replaceChildren(
+    $("statute-list"),
+    rules.map((r) =>
+      el("li", { class: "statute" }, [
+        el("div", { class: "statute-head" }, [
+          el("span", { class: "cite", text: r.citation }),
+          el("span", { class: "statute-id", text: r.id }),
+        ]),
+        el("p", { text: (r.party_framing && r.party_framing.tenant) || r.detail || "" }),
+      ])
+    )
+  );
+}
+
+/* --- forms --------------------------------------------------------------- */
+
 function setupCreateVault() {
-  qs("create-vault-btn").addEventListener("click", async () => {
-    const authHeaders = await getAuthHeaders(); // attaches ownership if signed in; {} otherwise
-    const vault = await api("/api/vaults", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders },
-      body: JSON.stringify({}),
-    });
-    history.replaceState(null, "", `/?vault=${vault.id}`);
-    await loadVaultById(vault.id);
+  $("create-vault-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorEl = $("create-error");
+    clearError(errorEl);
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+      const vault = await api("/api/vaults", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+        body: JSON.stringify({
+          label: $("new-vault-label").value.trim() || null,
+          zip_code: $("new-vault-zip").value.trim() || null,
+        }),
+      });
+      history.replaceState(null, "", `/?vault=${encodeURIComponent(vault.id)}`);
+      state.vaultId = vault.id;
+      state.shareToken = null;
+      state.vault = vault;
+      await renderVault();
+    } catch (err) {
+      showError(errorEl, err.message);
+    } finally {
+      btn.disabled = false;
+    }
   });
 }
 
 function setupOpenVault() {
-  qs("open-vault-form").addEventListener("submit", async (e) => {
+  $("open-vault-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const value = qs("open-vault-id").value.trim();
+    const errorEl = $("open-error");
+    clearError(errorEl);
+    const value = $("open-vault-id").value.trim();
     if (!value) return;
     try {
       await loadVaultById(value);
+      history.replaceState(null, "", `/?vault=${encodeURIComponent(value)}`);
     } catch {
-      await loadVaultByShareToken(value);
+      try {
+        await loadVaultByShareToken(value);
+        history.replaceState(null, "", `/?share=${encodeURIComponent(value)}`);
+      } catch {
+        showError(errorEl, "No vault found for that id or share token.");
+      }
     }
   });
 }
 
+function setupPartyToggle() {
+  document.querySelectorAll('input[name="party"]').forEach((input) => {
+    input.addEventListener("change", async (e) => {
+      state.party = e.target.value;
+      updateEvidenceLink();
+      if (isOwner()) renderAskSuggestions();
+      await refreshData();
+    });
+  });
+}
+
 function updateEventFormMode() {
-  const isUpload = qs("event-type").value === "document_upload";
-  qs("event-file-label").hidden = !isUpload;
-  qs("facts-fields").hidden = isUpload;
-  qs("advanced-facts").hidden = isUpload;
+  const isUpload = $("event-type").value === "document_upload";
+  $("event-file-label").hidden = !isUpload;
+  $("facts-fields").hidden = isUpload;
+  $("advanced-facts").hidden = isUpload;
 }
 
 function collectStructuredFacts() {
@@ -306,25 +669,27 @@ function collectStructuredFacts() {
     const key = input.name.slice("fact:".length);
     const raw = input.value;
     if (raw === "") return; // not stated — omit rather than assert a value
-    if (input.dataset.factType === "number") {
-      facts[key] = Number(raw);
-    } else {
-      facts[key] = raw === "true";
-    }
+    facts[key] = input.dataset.factType === "number" ? Number(raw) : raw === "true";
   });
   return facts;
 }
 
 async function uploadDocument() {
-  const file = qs("event-file").files[0];
+  const file = $("event-file").files[0];
   if (!file) throw new Error("Choose a file to upload.");
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`That file is ${(file.size / 1024 / 1024).toFixed(1)}MB. The limit is ${MAX_UPLOAD_BYTES / 1024 / 1024}MB.`);
+  }
 
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("occurred_at", qs("event-date").value);
-  if (qs("event-notes").value) formData.append("notes", qs("event-notes").value);
+  formData.append("occurred_at", $("event-date").value);
+  if ($("event-notes").value) formData.append("notes", $("event-notes").value);
 
-  const res = await fetch(`/api/vaults/${state.vaultId}/documents`, { method: "POST", body: formData });
+  const res = await fetch(`/api/vaults/${encodeURIComponent(state.vaultId)}/documents`, {
+    method: "POST",
+    body: formData,
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `${res.status} ${res.statusText}`);
@@ -333,53 +698,83 @@ async function uploadDocument() {
 
 async function createJsonEvent() {
   const facts = collectStructuredFacts();
-  const advancedRaw = qs("event-facts-advanced").value.trim();
-  if (advancedRaw) {
-    Object.assign(facts, JSON.parse(advancedRaw)); // caller catches malformed JSON
-  }
-  await api(`/api/vaults/${state.vaultId}/events`, {
+  const advancedRaw = $("event-facts-advanced").value.trim();
+  if (advancedRaw) Object.assign(facts, JSON.parse(advancedRaw));
+  await api(vaultPath("/events"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      event_type: qs("event-type").value,
-      occurred_at: qs("event-date").value,
-      notes: qs("event-notes").value || null,
+      event_type: $("event-type").value,
+      occurred_at: $("event-date").value,
+      notes: $("event-notes").value || null,
       facts,
     }),
   });
 }
 
-function setupEventForm() {
-  qs("event-type").addEventListener("change", updateEventFormMode);
+// Mirrors MAX_UPLOAD_BYTES in app/documents.py — kept under Vercel's 4.5MB
+// request-body limit, which is enforced at the platform edge before the
+// request ever reaches the app.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
-  qs("event-form").addEventListener("submit", async (e) => {
+function setupEventForm() {
+  $("event-type").addEventListener("change", updateEventFormMode);
+  $("upload-hint").textContent = `PDF, JPG, PNG, HEIC or TXT, up to ${MAX_UPLOAD_BYTES / 1024 / 1024}MB. It is read and adjudicated on upload.`;
+
+  $("event-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const errorEl = qs("event-error");
-    errorEl.hidden = true;
+    const errorEl = $("event-error");
+    clearError(errorEl);
+    const btn = $("event-submit");
+    const isUpload = $("event-type").value === "document_upload";
+    btn.disabled = true;
+    btn.textContent = isUpload ? "Reading document…" : "Saving…";
 
     try {
-      if (qs("event-type").value === "document_upload") {
-        await uploadDocument();
-      } else {
-        await createJsonEvent();
-      }
-      qs("event-form").reset();
+      if (isUpload) await uploadDocument();
+      else await createJsonEvent();
+      $("event-form").reset();
       updateEventFormMode();
       await refreshData();
     } catch (err) {
-      errorEl.textContent = err.message.includes("JSON") ? "Facts must be valid JSON." : err.message;
-      errorEl.hidden = false;
+      showError(errorEl, err.message.includes("JSON") ? "Advanced facts must be valid JSON." : err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Add to record";
     }
   });
 }
 
 function setupAcknowledge() {
-  qs("acknowledge-btn").addEventListener("click", async () => {
-    const vault = await api(`/api/vaults/by-share-token/${state.shareToken}/acknowledge`, { method: "POST" });
-    qs("ack-status").textContent = `Acknowledged at ${vault.acknowledged_at}`;
-    qs("acknowledge-btn").disabled = true;
+  $("acknowledge-btn").addEventListener("click", async () => {
+    const btn = $("acknowledge-btn");
+    btn.disabled = true;
+    try {
+      const vault = await api(vaultPath("/acknowledge"), { method: "POST" });
+      state.vault = vault;
+      $("ack-status").textContent = `Acknowledged ${formatDate(vault.acknowledged_at)}`;
+    } catch (err) {
+      showError($("vault-error"), err.message);
+      btn.disabled = false;
+    }
   });
 }
+
+function setupCopyShare() {
+  $("copy-share-btn").addEventListener("click", async () => {
+    const btn = $("copy-share-btn");
+    try {
+      await navigator.clipboard.writeText($("share-link").href);
+      btn.textContent = "Copied";
+      setTimeout(() => (btn.textContent = "Copy link"), 1500);
+    } catch {
+      btn.textContent = "Copy failed";
+      setTimeout(() => (btn.textContent = "Copy link"), 1500);
+    }
+  });
+}
+
+/* --- boot ---------------------------------------------------------------- */
 
 async function init() {
   setupCreateVault();
@@ -387,21 +782,27 @@ async function init() {
   setupEventForm();
   setupAcknowledge();
   setupPartyToggle();
-  await initAuth();
+  setupCopyShare();
+  setupAsk();
+  updateEventFormMode();
 
   const params = new URLSearchParams(location.search);
   const shareToken = params.get("share");
   const vaultId = params.get("vault");
 
   try {
-    if (shareToken) {
-      await loadVaultByShareToken(shareToken);
-    } else if (vaultId) {
-      await loadVaultById(vaultId);
-    }
+    if (shareToken) await loadVaultByShareToken(shareToken);
+    else if (vaultId) await loadVaultById(vaultId);
+    else showLanding();
   } catch (err) {
     console.error("Failed to load vault from URL", err);
+    showLanding();
+    showError($("open-error"), `That link did not resolve to a vault: ${err.message}`);
   }
+
+  // Non-blocking: neither should delay first paint of the vault.
+  void renderStatuteTable();
+  void initAuth();
 }
 
 init();
