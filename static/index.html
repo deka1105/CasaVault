@@ -231,10 +231,11 @@
           </div>
 
           <label class="field" id="event-file-label" hidden>
-            <span>File</span>
-            <input id="event-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.txt">
+            <span>Files</span>
+            <input id="event-file" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.txt">
             <span class="hint-inline" id="upload-hint" style="font-size: 0.78rem; color: var(--ink-faint); text-transform: none; letter-spacing: 0; font-weight: 400;"></span>
           </label>
+          <p id="upload-progress" class="upload-progress" hidden></p>
 
           <fieldset id="facts-fields" class="facts-grid">
             <legend>Known facts <span class="hint-inline">— fill in only what you know</span></legend>

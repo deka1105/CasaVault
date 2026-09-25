@@ -439,6 +439,46 @@ function renderEvents(events) {
   );
 }
 
+/* One event can hold many files — a real lease is ~25. Files the extractor
+ * skipped are labelled, so the timeline never implies a document was read
+ * when it was only stored. */
+function renderEventDocuments(event) {
+  const docs = event.documents || [];
+  if (!docs.length) {
+    return event.source_document_ref
+      ? el("a", {
+          href: `${vaultPath("/documents")}/${event.id}`,
+          target: "_blank",
+          rel: "noopener",
+          text: event.original_filename || "download",
+        })
+      : "";
+  }
+
+  const shown = docs.slice(0, 3);
+  const rest = docs.length - shown.length;
+  const row = (d) =>
+    el("div", { class: "doc-row" }, [
+      el("a", {
+        href: `${vaultPath("/documents")}/${d.id}`,
+        target: "_blank",
+        rel: "noopener",
+        text: d.original_filename || "download",
+      }),
+      d.extraction_status === "not_read" ? el("span", { class: "doc-unread", text: "not read" }) : null,
+    ]);
+
+  return el("div", { class: "doc-list" }, [
+    ...shown.map(row),
+    rest > 0
+      ? el("details", { class: "doc-more" }, [
+          el("summary", {}, `${rest} more`),
+          el("div", {}, docs.slice(3).map(row)),
+        ])
+      : null,
+  ]);
+}
+
 /* Three states, not one list.
  *
  * A compliant lease fires no rules at all, so a panel that showed only
