@@ -66,10 +66,26 @@ function clearError(node) {
   node.hidden = true;
 }
 
+const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 function formatDate(value) {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
+  const raw = String(value);
+
+  // A calendar date is not an instant. new Date("2026-08-31") is parsed as
+  // UTC midnight per the spec, and toLocaleDateString then renders it in the
+  // viewer's zone — so everywhere west of UTC it printed the PREVIOUS day.
+  // In a record whose whole purpose is proving what happened when, that is
+  // not cosmetic: the 30-day deposit clock (68 P.S. § 250.512) was being
+  // shown to tenants as expiring a day earlier than the statute allows.
+  // Date-only strings must therefore be constructed in local time; full
+  // timestamps (created_at, acknowledged_at) are real instants and stay as-is.
+  const parts = DATE_ONLY.exec(raw);
+  const date = parts
+    ? new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]))
+    : new Date(raw);
+
+  if (Number.isNaN(date.getTime())) return raw;
   return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
