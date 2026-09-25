@@ -711,32 +711,15 @@ function setupAsk() {
 
 /* --- forms --------------------------------------------------------------- */
 
-function setupCreateVault() {
-  $("create-vault-form").addEventListener("submit", async (e) => {
+/* The landing no longer creates a record directly — it looks up an address.
+ * The record is started from the address page, so it is attached to a
+ * property from the moment it exists rather than being retrofitted later. */
+function setupAddressSearch() {
+  $("address-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const errorEl = $("create-error");
-    clearError(errorEl);
-    const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    try {
-      const vault = await api("/api/vaults", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
-        body: JSON.stringify({
-          label: $("new-vault-label").value.trim() || null,
-          zip_code: $("new-vault-zip").value.trim() || null,
-        }),
-      });
-      history.replaceState(null, "", `/?vault=${encodeURIComponent(vault.id)}`);
-      state.vaultId = vault.id;
-      state.shareToken = null;
-      state.vault = vault;
-      await renderVault();
-    } catch (err) {
-      showError(errorEl, err.message);
-    } finally {
-      btn.disabled = false;
-    }
+    const value = $("address-input").value.trim();
+    if (!value) return;
+    location.href = `/property/?a=${encodeURIComponent(value)}`;
   });
 }
 
@@ -983,7 +966,7 @@ function setupCopyShare() {
 /* --- boot ---------------------------------------------------------------- */
 
 async function init() {
-  setupCreateVault();
+  setupAddressSearch();
   setupOpenVault();
   setupEventForm();
   setupAcknowledge();
