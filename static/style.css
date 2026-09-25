@@ -486,6 +486,75 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .finding-caution .badge { background: var(--caution); color: var(--surface); }
 .finding-body { margin: 0; font-size: 0.92rem; }
 
+/* --- adjudication tally + the passed/unknown groups --------------------- */
+
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  align-items: baseline;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.tally strong { color: var(--ink); font-size: 1.05rem; font-family: var(--serif); }
+.tally span + span::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  transform: translateY(-1px);
+  background: currentColor;
+}
+.tally-flag { color: var(--violation); }
+.tally-ok { color: var(--accent); }
+.tally-unknown { color: var(--caution); }
+
+.finding-clear {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.finding-clear .badge { background: var(--accent); color: var(--accent-ink); }
+
+.rule-group { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-sunk); }
+.rule-group > summary {
+  padding: 0.6rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  list-style-position: inside;
+}
+.rule-group[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 0; }
+.group-unknown { border-color: var(--caution-line); }
+.group-unknown > summary { color: var(--caution); }
+
+.rule-list { list-style: none; margin: 0; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.7rem; }
+.rule-row { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.88rem; }
+.rule-body { min-width: 0; }
+.rule-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px; height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.mark-ok { background: var(--accent); color: var(--accent-ink); }
+.mark-unknown { background: var(--caution); color: var(--surface); }
+.next-step {
+  margin: 0.3rem 0 0;
+  font-size: 0.83rem;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--caution-line);
+  padding-left: 0.6rem;
+}
+
 .cite {
   display: inline-block;
   font-family: var(--mono);
