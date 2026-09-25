@@ -27,11 +27,20 @@ function showVaultView() {
 // link. If /api/config reports no publishable key, none of this runs and
 // the app behaves exactly as it did before sign-in existed.
 
-function loadClerkScript() {
+function loadClerkScript(publishableKey) {
+  // The CDN script tag has its OWN auto-init path, distinct from the npm
+  // `new Clerk(key)` constructor pattern: it reads data-clerk-publishable-key
+  // off its own <script> tag synchronously as it executes. Without that
+  // attribute it throws internally and leaves window.Clerk in a broken,
+  // non-constructor state — confirmed live via a real browser console
+  // error ("Missing publishableKey" / "window.Clerk is not a constructor"),
+  // not assumed. Setting the attribute lets its auto-init produce a ready
+  // singleton directly, so we use that instead of `new window.Clerk(...)`.
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@6/dist/clerk.browser.js";
     script.crossOrigin = "anonymous";
+    script.setAttribute("data-clerk-publishable-key", publishableKey);
     script.onload = resolve;
     script.onerror = () => reject(new Error("Failed to load Clerk"));
     document.head.appendChild(script);
@@ -48,8 +57,8 @@ async function initAuth() {
   if (!config.clerk_publishable_key) return;
 
   try {
-    await loadClerkScript();
-    clerk = new window.Clerk(config.clerk_publishable_key);
+    await loadClerkScript(config.clerk_publishable_key);
+    clerk = window.Clerk;
     await clerk.load();
   } catch (err) {
     console.error("Clerk failed to load; continuing without sign-in", err);
