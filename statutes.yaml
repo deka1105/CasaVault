@@ -41,6 +41,9 @@ rules:
   - id: deposit_freeze_five_years
     status: verified
     applies_to: security_deposit
+    party_framing:
+      tenant: "You have been in possession five years or more, so a rent increase does not let your landlord raise your security deposit."
+      landlord: "After five years of the tenant's possession, a rent increase does not permit you to increase the security deposit."
     condition: "tenancy_years >= 5 AND deposit_increased == true"
     severity: violation
     citation: "68 P.S. § 250.511a(d)"
@@ -61,6 +64,9 @@ rules:
   - id: deposit_escrow_required
     status: verified
     applies_to: security_deposit
+    party_framing:
+      tenant: "A deposit over $100 must sit in an escrow account at a regulated bank, and you must be told that bank's name, address and the amount held."
+      landlord: "Deposits over $100 must be held in escrow at a regulated banking institution, with written notice to the tenant of the bank and the amount."
     condition: "deposit_amount > 100"
     severity: caution
     citation: "68 P.S. § 250.511b"
@@ -111,6 +117,9 @@ rules:
   - id: open_violations_over_30_days
     status: verified
     applies_to: lease
+    party_framing:
+      tenant: "L&I violations have been open on this property for more than 30 days, which bars your landlord from collecting rent or evicting you while they remain open."
+      landlord: "L&I violations open more than 30 days bar rent collection and eviction until they are resolved and any fines are paid."
     condition: "li_violations_open_days > 30"
     severity: violation
     citation: "Phila. Bill No. 250329 (Safe Healthy Homes Act, signed May 2026)"
