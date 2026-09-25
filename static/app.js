@@ -920,7 +920,7 @@ function setupPartyToggle() {
 }
 
 function updateEventFormMode() {
-  const isUpload = $("event-type").value === "document_upload";
+  const isUpload = $("event-type").value === "document_upload" || $("event-type").value === "insurance_upload";
   $("event-file-label").hidden = !isUpload;
   $("facts-fields").hidden = isUpload;
   $("advanced-facts").hidden = isUpload;
@@ -1078,9 +1078,10 @@ function setupEventForm() {
     const errorEl = $("event-error");
     clearError(errorEl);
     const btn = $("event-submit");
-    const isUpload = $("event-type").value === "document_upload";
+    const evtType = $("event-type").value;
+    const isUpload = evtType === "document_upload" || evtType === "insurance_upload";
     btn.disabled = true;
-    btn.textContent = isUpload ? "Reading document…" : "Saving…";
+    btn.textContent = isUpload ? "Uploading…" : "Saving…";
 
     try {
       if (isUpload) reportExtraction(await uploadDocuments());
