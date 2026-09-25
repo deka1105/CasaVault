@@ -57,6 +57,26 @@ _PRIORITY_PATTERNS = (
     r"rent[_ ]?concession",
     r"security[_ ]?deposit",
     r"buy-?out",
+    # A waiver is the table's highest-value detectable clause
+    # (statutes.yaml, deposit_waiver_void: "void on its face, detectable by
+    # extraction alone"), and the master addendum is where a real lease hides
+    # them — the one tested against buries "Resident Waives Right to Withhold
+    # Rent" in section 29 of its community policies.
+    r"waiver|waives",
+    r"master[_ ]?addendum",
+    r"community[_ ]?policies",
+)
+
+# Ranking for SECONDARY documents, which compete for a limited budget.
+# Without this the budget is spent in whatever order the file picker returned
+# — alphabetically, that meant reading the marijuana addendum and skipping
+# the master addendum.
+_SECONDARY_RELEVANCE = (
+    (r"lead|habitability|mold|repair|maintenance", 5),
+    (r"utility|utilities", 4),
+    (r"insurance|damage", 3),
+    (r"pet|parking|storage", 2),
+    (r"bed[_ ]?bug", 2),
 )
 
 
