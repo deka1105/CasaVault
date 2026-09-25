@@ -193,3 +193,30 @@ def test_non_transient_error_is_not_retried(monkeypatch):
     assert len(calls) == 1
     assert res.json()["unavailable"] is True
     assert res.json()["answer"] is None
+
+
+def test_daily_quota_is_not_retried(monkeypatch):
+    """A 429 here is a DAILY cap (20/day on the free tier), so retrying can't
+    clear it — and each attempt costs ~2 minutes, because the SDK backs off
+    internally before surfacing the error. Fail fast, and say it's a limit
+    rather than implying the record couldn't support an answer."""
+    calls = []
+
+    def boom(*args, **kwargs):
+        calls.append(1)
+        raise RuntimeError("Error code: 429 - Rate limit exceeded (limit: 20 requests per day on Free Tier)")
+
+    monkeypatch.setattr(agent, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(agent, "_call_model", boom)
+    monkeypatch.setattr(agent.time, "sleep", lambda _s: pytest.fail("quota must not be retried"))
+
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={"zip_code": "19121"}).json()
+        res = client.post(f"/api/vaults/{vault['id']}/ask", json={"question": "anything"})
+
+    assert len(calls) == 1
+    body = res.json()
+    assert body["unavailable"] is True
+    assert "daily limit" in body["refusal"]
+    assert body["answer"] is None
+    assert body["handoff"]["route"] == "hotline"
