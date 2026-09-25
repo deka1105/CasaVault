@@ -156,9 +156,13 @@ main {
 }
 .section-head .hint { color: var(--ink-faint); font-size: 0.8rem; margin: 0; }
 
+/* NOTE: every minmax() floor below is wrapped in min(..., 100%). A bare
+   minmax(300px, 1fr) never shrinks past 300px, which pushed the page wider
+   than a 320px phone screen and produced horizontal scrolling on the whole
+   document — caught by measuring, not by eye. */
 .grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 1.25rem;
   align-items: start;
 }
@@ -177,7 +181,7 @@ main {
 
 .pipeline {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
   gap: 0.6rem;
   margin: 1.4rem 0 0;
   padding: 0;
@@ -279,7 +283,7 @@ input[type="file"] {
 
 .facts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
   gap: 0.85rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
