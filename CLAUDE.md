@@ -417,6 +417,10 @@ limit before uploading so the user gets told immediately. Overridable via the
 
 ## What a real lease actually is (and what it forced)
 
+_Figures below are deliberately generalized: the lease used for testing is
+a real one belonging to the project owner, kept local and never uploaded to
+the deployment. If this repo is made public for judging, keep it that way._
+
 Verified against an actual Philadelphia lease for a professionally-managed
 building: **25 PDFs, 102 pages, 8.8MB**, a DocuSign envelope of NAA standard
 forms. Three things follow, and all three broke assumptions the build had
@@ -424,8 +428,8 @@ been making:
 
 1. **The filled values are invisible to text extraction.** `pypdf` reads the
    lease's section 4 as `"The total security deposit for all residents is $ ,
-   due on or before..."` — blank. Rendered, it says **$500.00**, and the next
-   line names the escrow bank. DocuSign flattens field values into drawing
+   due on or before..."` — blank. Rendered, that line carries an actual
+   dollar amount, and the next names the escrow bank. DocuSign flattens field values into drawing
    operations, not form fields (the PDF has exactly one AcroForm entry, the
    signature). So extraction MUST go through Gemini's visual document path.
    Any future "just pull the text locally and save quota" optimization would
@@ -433,8 +437,9 @@ been making:
 2. **25 files would be 25 model requests** against a 20/day quota, 25 timeline
    rows, and 25 date pickers. See the triage and batch-upload sections below.
 3. **A compliant lease produces no flags at all.** This one is compliant:
-   $500 deposit on $2,432 rent is 0.21 months against a 2-month cap, the
-   escrow bank is disclosed, and the Philadelphia acknowledgment form confirms
+   the deposit is roughly a fifth of one month's rent, far under the
+   two-month cap; the escrow bank is disclosed; and the acknowledgment form
+   confirms
    the Certificate of Rental Suitability and Partners in Good Housing handbook
    were both provided. The findings panel rendered empty, which reads as "this
    product did nothing" rather than as the genuinely useful result. That drove
@@ -442,9 +447,9 @@ been making:
 
 Two further findings from that lease worth keeping:
 
-- **Its zip is 19123, which is NOT in `right_to_counsel.covered_zips`.** So a
-  real tenant demo shows the PhillyTenant.org fallback, not the hotline. That
-  is on-message (PLAN.md's named population is renters *outside* RTC zips) but
+- **Its zip is not in `right_to_counsel.covered_zips`.** So a real tenant
+  demo shows the PhillyTenant.org fallback, not the hotline. That is
+  on-message (PLAN.md's named population is renters *outside* RTC zips) but
   don't expect the hotline path on camera.
 - **The master addendum contains "Resident Waives Right to Withhold Rent."**
   The most legally interesting clause in the whole bundle maps to
