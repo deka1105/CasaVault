@@ -150,11 +150,33 @@ start or redeploy. Fixed by making both swappable, not by rearchitecting:
   changes** for Vercel either. `vercel.json` only sets `maxDuration: 120`
   as an explicit safety margin — Fluid Compute's 300s default already
   covers every Gemini call timed this session (~90s max).
-- **Not yet done**: actual provisioning (Neon + Blob store creation, `vercel
-  link`), and a live preview-deployment smoke test. This needs the user's
-  Vercel account/team, so it wasn't done unattended. Full plan, sequencing,
-  and rationale for every choice above:
-  `~/.claude/plans/jaunty-sniffing-ullman.md`.
+- **Provisioning status** (team `shubham-ad-s-projects`, project `casavault`,
+  id `prj_H5qOmZidImbAO138ZSbyPF8xNG4s`):
+  - ✅ Neon Postgres connected — `DATABASE_URL` and friends present in project
+    env vars. **Not yet live-verified** — nothing has made a real connection
+    to it (would need `DATABASE_URL`'s actual value via `vercel env pull` or
+    pasted directly; the MCP env-list API only returns redacted values for
+    sensitive vars).
+  - ✅ Vercel Blob connected, **private access, live-verified**: a real
+    put/get/delete round-trip against the actual store succeeded from
+    `app/storage.py`. **Note for next time**: the store must be created with
+    "Private" access explicitly — a first attempt defaulted to public, and
+    `vercel.blob.put(..., access="private")` correctly rejects that mismatch
+    with `Cannot use private access on a public store`. That store was
+    deleted and recreated private.
+  - ❌ Git repo not yet connected to the Vercel project — `deka1105/CasaVault`
+    needs Vercel's own GitHub App installed on it (Project Settings → Git →
+    Connect Git Repository); a `create_git_project` API call failed with
+    `repo_not_found` for exactly this reason.
+  - Creating Vercel storage resources via the MCP/API tools returned `403
+    Forbidden: You don't have permission to create the blob` consistently —
+    this needs to be done from the dashboard, not automatable from here even
+    with team access confirmed elsewhere.
+  - Still needed: connect the git repo, a real deploy, and the same
+    live-scenario smoke test already run locally (upload the sample notice,
+    confirm the 4 flags, ask the deposit-return question) run again against
+    the deployed preview URL. Full plan/sequencing:
+    `~/.claude/plans/jaunty-sniffing-ullman.md`.
 
 ## Front end (`static/`)
 
