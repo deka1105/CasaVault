@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from datetime import date
@@ -8,7 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import Response
 from sqlmodel import Session
 
-from app import storage
+from app import storage, triage
 from app.database import get_session
 from app.documents import MAX_UPLOAD_BYTES, UploadRejected, stored_filename
 from app.extractor import (
@@ -19,7 +20,7 @@ from app.extractor import (
     classify_extraction_error,
     extract_facts_from_file,
 )
-from app.models import Vault, VaultEvent
+from app.models import Vault, VaultDocument, VaultEvent
 from app.rules_engine import adjudicate_vault
 from app.schemas import DocumentUploadRead, EventRead, ExtractionInfo
 
