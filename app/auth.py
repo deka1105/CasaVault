@@ -20,8 +20,13 @@ async def get_optional_user_id(request: Request) -> Optional[str]:
         return None
 
     try:
-        clerk = Clerk(bearer_auth=CLERK_SECRET_KEY)
-        state = await clerk.authenticate_request_async(request, AuthenticateRequestOptions())
+        # async with: a fresh Clerk() per call left its underlying HTTP
+        # client open with nothing to close it — a real leak risk on a warm,
+        # reused Fluid Compute instance handling many requests. Caught on
+        # review, not by a test (nothing here would fail functionally on a
+        # single request; it only compounds over many).
+        async with Clerk(bearer_auth=CLERK_SECRET_KEY) as clerk:
+            state = await clerk.authenticate_request_async(request, AuthenticateRequestOptions())
     except Exception:
         logger.exception("Clerk authentication check failed")
         return None
