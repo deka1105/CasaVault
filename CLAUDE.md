@@ -23,8 +23,7 @@ the flagship feature; and `pytest -q` as documented did not run. All fixed,
 67 tests green. Still pending a human: an actual Clerk sign-in
 click-through (bug #3) and a real Philadelphia lease end to end.
 
-This is a
-hackathon build (LexHack 2026) with a hard submission deadline of **Sun Sep
+This is a hackathon build (LexHack 2026) with a hard submission deadline of **Sun Sep
 27, 2026, 5:00 PM EDT** — read `PLAN.md`'s build-order table before starting
 any work session to know what day/gate we're against.
 
@@ -34,10 +33,13 @@ The configured key hit `20 requests per day on Free Tier` for
 API, not a guess). Every document upload and every `/ask` call is one
 request. This is far too low for the actual demo/judging session, let alone
 further dev iteration — **upgrade this key's tier/billing before Saturday's
-demo**, or the app will start refusing extractions and agent answers mid-use
-with no visible warning to the user (it silently falls back to "safe
-refusal" behavior, which will look like a bug, not a quota issue, unless you
-know to check server logs for `RateLimitError`).
+demo**, or the app will start refusing extractions and agent answers mid-use.
+As of Sep 25 this no longer looks like a bug: quota exhaustion is detected
+and reported to the user as a daily limit, distinct from the agent's
+designed refusal (see the failure-taxonomy section), and it fails in ~20s
+instead of ~140s now that the SDK's own retry loop is disabled (see the
+Gemini client section). It is still a hard blocker for the demo — a quota
+message is not a grounded answer.
 
 ## Commands
 
