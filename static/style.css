@@ -68,7 +68,12 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+/* The header is sticky, so anchor targets need room or they land under it. */
+#how, #start { scroll-margin-top: 4.5rem; }
 
 body {
   margin: 0;
@@ -716,6 +721,7 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
