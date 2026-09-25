@@ -140,6 +140,12 @@ def test_history_appears_once_the_threshold_is_met_but_stays_de_identified(monke
 
 # --- incidents and the drafted notice --------------------------------------
 
+# The suite shares one database, and a Property is deliberately shared by
+# every vault at the same address — so each test below uses its own street to
+# avoid inheriting an earlier test's display spelling.
+INCIDENT_ADDRESS = "500 Incident Way"
+
+
 def _report(client, vault_id, **overrides):
     payload = {
         "category": "heat",
@@ -158,14 +164,14 @@ def _report(client, vault_id, **overrides):
 def test_reporting_an_incident_drafts_a_notice_and_does_not_send_it(monkeypatch):
     _no_city(monkeypatch)
     with TestClient(app) as client:
-        vault = client.post("/api/vaults", json={"address": "4047 Spring Garden St"}).json()
+        vault = client.post("/api/vaults", json={"address": INCIDENT_ADDRESS}).json()
         body = _report(client, vault["id"]).json()
 
     draft = body["draft"]
     assert draft["to"] == "office@example.com"
     # issue | urgency | address | name | #ref
     assert draft["subject"] == (
-        f"No heat | EMERGENCY | 4047 Spring Garden St | A. Resident | #{body['reference_code']}"
+        f"No heat | EMERGENCY | {INCIDENT_ADDRESS} | A. Resident | #{body['reference_code']}"
     )
     assert draft["mailto"].startswith("mailto:office%40example.com?")
     # The user sends it. Nothing here transmits anything.
@@ -180,7 +186,7 @@ def test_the_draft_states_facts_and_makes_no_legal_claim(monkeypatch):
     confirmed."""
     _no_city(monkeypatch)
     with TestClient(app) as client:
-        vault = client.post("/api/vaults", json={"address": "4047 Spring Garden St"}).json()
+        vault = client.post("/api/vaults", json={"address": INCIDENT_ADDRESS}).json()
         draft = _report(client, vault["id"]).json()["draft"]
 
     for legalese in ("P.S. §", "Phila. Code", "violation", "unlawful", "must repair", "legally required"):
@@ -192,7 +198,7 @@ def test_essential_service_and_repeat_report_appear_in_the_notice(monkeypatch):
     to be in the letter rather than only in our database."""
     _no_city(monkeypatch)
     with TestClient(app) as client:
-        vault = client.post("/api/vaults", json={"address": "4047 Spring Garden St"}).json()
+        vault = client.post("/api/vaults", json={"address": INCIDENT_ADDRESS}).json()
         draft = _report(client, vault["id"]).json()["draft"]
 
     assert "essential service" in draft["body"]
@@ -202,7 +208,7 @@ def test_essential_service_and_repeat_report_appear_in_the_notice(monkeypatch):
 def test_an_incident_lands_on_the_vault_timeline(monkeypatch):
     _no_city(monkeypatch)
     with TestClient(app) as client:
-        vault = client.post("/api/vaults", json={"address": "4047 Spring Garden St"}).json()
+        vault = client.post("/api/vaults", json={"address": INCIDENT_ADDRESS}).json()
         ref = _report(client, vault["id"]).json()["reference_code"]
         events = client.get(f"/api/vaults/{vault['id']}/events").json()
 
@@ -213,7 +219,7 @@ def test_an_incident_lands_on_the_vault_timeline(monkeypatch):
 def test_urgency_and_category_are_a_fixed_vocabulary(monkeypatch):
     _no_city(monkeypatch)
     with TestClient(app) as client:
-        vault = client.post("/api/vaults", json={"address": "4047 Spring Garden St"}).json()
+        vault = client.post("/api/vaults", json={"address": INCIDENT_ADDRESS}).json()
         bad_urgency = _report(client, vault["id"], urgency="VERY BAD")
         bad_category = _report(client, vault["id"], category="vibes")
 
@@ -242,7 +248,7 @@ def test_city_record_pull_moves_two_rules_out_of_needs_facts(monkeypatch):
     )
 
     with TestClient(app) as client:
-        vault = client.post("/api/vaults", json={"address": "4047 Spring Garden St"}).json()
+        vault = client.post("/api/vaults", json={"address": INCIDENT_ADDRESS}).json()
         before = client.get(f"/api/vaults/{vault['id']}/adjudication").json()
         client.post(f"/api/vaults/{vault['id']}/city-record")
         after = client.get(f"/api/vaults/{vault['id']}/adjudication").json()
