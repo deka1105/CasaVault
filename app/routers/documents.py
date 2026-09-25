@@ -278,7 +278,7 @@ def build_document_response(vault_id: str, document_id: int, session: Session) -
     )
 
 
-@router.get("/{event_id}")
-def download_document(vault_id: str, event_id: int, session: Session = Depends(get_session)) -> Response:
+@router.get("/{document_id}")
+def download_document(vault_id: str, document_id: int, session: Session = Depends(get_session)) -> Response:
     _require_vault(vault_id, session)
-    return build_document_response(vault_id, event_id, session)
+    return build_document_response(vault_id, document_id, session)
