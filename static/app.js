@@ -1,4 +1,5 @@
 const state = { vaultId: null, shareToken: null, isOwner: true, party: "tenant" };
+let clerk = null;
 
 function qs(id) {
   return document.getElementById(id);
@@ -15,7 +16,99 @@ async function api(path, opts) {
 
 function showVaultView() {
   qs("landing").hidden = true;
+  qs("my-vaults").hidden = true;
   qs("vault-view").hidden = false;
+}
+
+// --- Optional sign-in (Clerk) -------------------------------------------
+// Sign-in never gates access — a vault's id/share_token remain the actual
+// access control (see app/models.py). It only lets a signed-in creator find
+// their own vaults later via "Your vaults" instead of needing to keep the
+// link. If /api/config reports no publishable key, none of this runs and
+// the app behaves exactly as it did before sign-in existed.
+
+function loadClerkScript() {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@6/dist/clerk.browser.js";
+    script.crossOrigin = "anonymous";
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Failed to load Clerk"));
+    document.head.appendChild(script);
+  });
+}
+
+async function initAuth() {
+  let config;
+  try {
+    config = await api("/api/config");
+  } catch {
+    return;
+  }
+  if (!config.clerk_publishable_key) return;
+
+  try {
+    await loadClerkScript();
+    clerk = new window.Clerk(config.clerk_publishable_key);
+    await clerk.load();
+  } catch (err) {
+    console.error("Clerk failed to load; continuing without sign-in", err);
+    return;
+  }
+
+  qs("auth-area").hidden = false;
+  qs("sign-in-btn").addEventListener("click", () => clerk.openSignIn());
+  clerk.addListener(() => updateAuthUI());
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const signedIn = Boolean(clerk && clerk.user);
+  qs("sign-in-btn").hidden = signedIn;
+
+  const mount = qs("user-button-mount");
+  mount.hidden = !signedIn;
+  if (signedIn && !mount.dataset.mounted) {
+    clerk.mountUserButton(mount);
+    mount.dataset.mounted = "1";
+  }
+
+  refreshMyVaults();
+}
+
+async function getAuthHeaders() {
+  if (clerk && clerk.session) {
+    try {
+      const token = await clerk.session.getToken();
+      if (token) return { Authorization: `Bearer ${token}` };
+    } catch {
+      // fall through to anonymous
+    }
+  }
+  return {};
+}
+
+async function refreshMyVaults() {
+  const section = qs("my-vaults");
+  if (!clerk || !clerk.user || !qs("landing") || qs("landing").hidden === undefined) {
+    // still allow refresh even when landing is hidden isn't relevant here;
+    // the real gate is simply: only show this while signed in.
+  }
+  if (!clerk || !clerk.user) {
+    section.hidden = true;
+    return;
+  }
+  try {
+    const headers = await getAuthHeaders();
+    const vaults = await api("/api/vaults/mine", { headers });
+    qs("my-vaults-list").innerHTML =
+      vaults
+        .map((v) => `<li><a href="/?vault=${v.id}">${v.label || `Vault ${v.id}`}</a></li>`)
+        .join("") || "<li><em>No vaults yet — create one below.</em></li>";
+    section.hidden = qs("vault-view").hidden ? false : true;
+  } catch {
+    section.hidden = true;
+  }
 }
 
 async function loadVaultById(id) {
