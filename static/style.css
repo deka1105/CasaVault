@@ -163,6 +163,12 @@ main {
   align-items: start;
 }
 
+/* Findings carry the most text and are the point of the page; deadlines are
+   a short table. An even split left the right column half empty. */
+@media (min-width: 900px) {
+  .grid-findings { grid-template-columns: 1.4fr 1fr; }
+}
+
 /* --- landing ------------------------------------------------------------ */
 
 .hero { text-align: left; }
