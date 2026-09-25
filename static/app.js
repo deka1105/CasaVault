@@ -405,7 +405,14 @@ function renderEvents(events) {
           {},
           facts.length
             ? facts.map(([k, v]) => el("div", { class: "cite", text: `${k}: ${v}` }))
-            : el("span", { class: "empty", text: "—" })
+            : el("span", {
+                class: "empty",
+                // An uploaded document with no facts means extraction found
+                // nothing (or could not run) — say so, rather than showing
+                // the same blank dash as a hand-logged event that never had
+                // facts to begin with. The document itself is stored either way.
+                text: e.event_type === "document_upload" ? "nothing extracted" : "—",
+              })
         ),
         el(
           "td",
@@ -508,11 +515,16 @@ function renderAnswer(result) {
 
   if (result.refusal) {
     // A refusal is the designed behaviour, not an error state (PLAN.md:
-    // "That last refusal goes in the demo video. It is the point.").
+    // "That last refusal goes in the demo video. It is the point.") — but an
+    // upstream outage is a fault, and the two must not look identical or
+    // users learn to distrust a refusal that worked exactly as intended.
     const handoff = result.handoff || {};
     panel.className = "answer answer-refusal";
     replaceChildren(panel, [
-      el("div", { class: "answer-label", text: "Not answerable from this record" }),
+      el("div", {
+        class: "answer-label",
+        text: result.unavailable ? "Agent temporarily unavailable" : "Not answerable from this record",
+      }),
       el("p", { class: "answer-text", text: result.refusal }),
       el("div", { class: "handoff" }, [
         el("strong", { text: "Talk to a human: " }),
