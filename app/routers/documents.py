@@ -211,18 +211,18 @@ async def upload_document(
     session.commit()
     session.refresh(event)
 
-    session.add(
-        VaultDocument(
-            vault_id=vault_id,
-            event_id=event.id,
-            storage_ref=storage_ref,
-            original_filename=display_name,
-            triage_category=decision.category,
-            extraction_status=extraction.status,
-            extraction_note=extraction.message,
-        )
+    document = VaultDocument(
+        vault_id=vault_id,
+        event_id=event.id,
+        storage_ref=storage_ref,
+        original_filename=display_name,
+        triage_category=decision.category,
+        extraction_status=extraction.status,
+        extraction_note=extraction.message,
     )
+    session.add(document)
     session.commit()
+    session.refresh(document)
 
     if facts:
         adjudicate_vault(vault_id, session, request.app.state.statutes)
