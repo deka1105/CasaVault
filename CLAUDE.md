@@ -33,9 +33,17 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 uvicorn app.main:app --reload   # dev server, http://127.0.0.1:8000
-pytest -q                       # full test suite
+pytest -q                       # full test suite (67 tests)
 pytest -q -k test_name          # single test
 ```
+
+`conftest.py` at the repo root does two things, both of which were missing
+and both of which matter: it puts the project root on `sys.path` (without it
+`pytest -q` failed outright with `ModuleNotFoundError: No module named 'app'`
+— only `python -m pytest` worked, so the documented command above was
+broken), and it points the suite at a throwaway SQLite file and uploads
+directory. Before that, running the tests wrote real vaults, events and
+uploaded files straight into the dev `casavault.db` and `uploads/`.
 
 ## What CasaVault is
 
@@ -80,15 +88,19 @@ tracker, and the agent are four thin entry points onto one engine.
 
 ## Current API surface
 
-- `POST /api/vaults`, `GET /api/vaults/{id}`, `GET /api/vaults/by-share-token/{token}`
+- `POST /api/vaults`, `GET /api/vaults/{id}`
 - `POST /api/vaults/{id}/events` — records a timeline event, then re-runs adjudication (see below)
 - `GET /api/vaults/{id}/events` — raw timeline events
 - `GET /api/vaults/{id}/flags` — current adjudication result, recomputed from scratch on every event write
-- `GET /api/vaults/{id}/deadlines` — statutory clocks started so far (currently just the deposit-return clock)
+- `GET /api/vaults/{id}/deadlines?party=tenant|landlord` — statutory clocks started so far (currently just the deposit-return clock), framed for the asking party
 - `GET /api/statutes` — verified rules only (draft rules never serialize out; see `statutes_loader.StatuteTable.verified_rules`)
 - `GET /api/vaults/{id}/rtc-check` — Right to Counsel zip lookup (`app/rtc.py`), shared with the agent's refusal handoff
-- `POST /api/vaults/by-share-token/{token}/acknowledge` — counterparty one-click ack; first click wins, sets `Vault.acknowledged_at` once and is idempotent after that
-- `GET /api/vaults/{id}/evidence` — server-rendered, print-to-PDF-friendly HTML evidence packet (`app/evidence.py`); no JS, no external assets, chronological with citations
+- `/api/vaults/by-share-token/{token}/...` — the **read-only counterparty
+  surface**, all of it in `app/routers/share.py`: the vault itself, `/events`,
+  `/flags`, `/deadlines`, `/evidence`, `/rtc-check`, `/documents/{event_id}`,
+  plus the one write PLAN.md calls for, `POST /acknowledge` (first click wins,
+  sets `Vault.acknowledged_at` once, idempotent after that)
+- `GET /api/vaults/{id}/evidence?party=tenant|landlord` — server-rendered, print-to-PDF-friendly HTML evidence packet (`app/evidence.py`); no JS, no external assets, chronological with citations
 - `POST /api/vaults/{id}/ask` — the grounded agent (`app/agent.py`). Live-verified: refuses on ungroundable questions, refuses on "will I win in court"-style legal conclusions, and answers with a citation when the vault/statute data actually supports it. See the Agent section below for how refusal is enforced in code, not just prompted.
 - `POST /api/vaults/{id}/documents` (multipart), `GET /api/vaults/{id}/documents/{event_id}` — real file upload/download, backing `document_upload` events. See below.
 - `GET /api/config` — public, non-secret frontend config (currently just `clerk_publishable_key`, `null` if sign-in isn't configured)
