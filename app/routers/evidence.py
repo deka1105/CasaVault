@@ -1,16 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session, select
 
 from app.database import get_session
 from app.evidence import render_evidence_packet
 from app.models import Deadline, Flag, Vault, VaultEvent
+from app.schemas import Party
 
 router = APIRouter(prefix="/api/vaults/{vault_id}/evidence", tags=["evidence"])
 
 
 @router.get("", response_class=HTMLResponse)
-def get_evidence_packet(vault_id: str, session: Session = Depends(get_session)):
+def get_evidence_packet(
+    vault_id: str,
+    party: Party = Query("tenant"),
+    session: Session = Depends(get_session),
+):
     vault = session.get(Vault, vault_id)
     if vault is None:
         raise HTTPException(status_code=404, detail="vault not found")
@@ -19,4 +24,4 @@ def get_evidence_packet(vault_id: str, session: Session = Depends(get_session)):
     flags = session.exec(select(Flag).where(Flag.vault_id == vault_id)).all()
     deadlines = session.exec(select(Deadline).where(Deadline.vault_id == vault_id)).all()
 
-    return render_evidence_packet(vault, events, flags, deadlines)
+    return render_evidence_packet(vault, events, flags, deadlines, party=party)

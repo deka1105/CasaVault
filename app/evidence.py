@@ -11,7 +11,12 @@ def _esc(value: Any) -> str:
 
 
 def render_evidence_packet(
-    vault: Vault, events: list[VaultEvent], flags: list[Flag], deadlines: list[Deadline]
+    vault: Vault,
+    events: list[VaultEvent],
+    flags: list[Flag],
+    deadlines: list[Deadline],
+    party: str = "tenant",
+    document_base: str | None = None,
 ) -> str:
     """Renders a single, self-contained, print-to-PDF-friendly HTML page —
     chronological events, then flags with citations, then open deadlines.
@@ -21,18 +26,22 @@ def render_evidence_packet(
 
     ordered_events = sorted(events, key=lambda e: e.occurred_at)
     ordered_flags = sorted(flags, key=lambda f: _SEVERITY_ORDER.get(f.severity, 99))
+    # One rule, two framings (PLAN.md). The packet used to hardcode
+    # message_tenant, so a landlord printing their own vault's evidence got
+    # the tenant's side of every finding.
+    document_base = document_base or f"/api/vaults/{vault.id}/documents"
 
     event_rows = "\n".join(
         f"<tr><td>{_esc(e.occurred_at)}</td><td>{_esc(e.event_type)}</td>"
         f"<td>{_esc(e.notes or '')}</td>"
         f"<td><pre>{_esc(_format_facts(e.facts))}</pre></td>"
-        f"<td>{_document_link(vault.id, e)}</td></tr>"
+        f"<td>{_document_link(document_base, e)}</td></tr>"
         for e in ordered_events
     ) or "<tr><td colspan='5'><em>No events recorded.</em></td></tr>"
 
     flag_rows = "\n".join(
         f"<tr class='severity-{_esc(f.severity)}'><td>{_esc(f.severity)}</td>"
-        f"<td>{_esc(f.message_tenant or f.statute_id)}</td><td>{_esc(f.citation)}</td></tr>"
+        f"<td>{_esc(_framing(f, party))}</td><td>{_esc(f.citation)}</td></tr>"
         for f in ordered_flags
     ) or "<tr><td colspan='3'><em>No flags.</em></td></tr>"
 
@@ -68,7 +77,7 @@ def render_evidence_packet(
 </head>
 <body>
   <h1>CasaVault evidence packet</h1>
-  <p class="disclaimer">This is rights information, not legal advice. Vault: {_esc(vault.label or vault.id)} · Jurisdiction: Philadelphia, PA · {ack_line}</p>
+  <p class="disclaimer">This is rights information, not legal advice. Vault: {_esc(vault.label or vault.id)} · Jurisdiction: Philadelphia, PA · {_esc(party.title())} view · {ack_line}</p>
 
   <h2>Timeline</h2>
   <table>
@@ -95,8 +104,17 @@ def _format_facts(facts: dict[str, Any]) -> str:
     return "\n".join(f"{k}: {v}" for k, v in (facts or {}).items()) or "—"
 
 
-def _document_link(vault_id: str, event: VaultEvent) -> str:
+def _framing(flag: Flag, party: str) -> str:
+    """Falls back to the other party's wording, then the rule id, so a rule
+    authored with only one framing still reads as a sentence rather than a
+    bare identifier."""
+    primary = flag.message_landlord if party == "landlord" else flag.message_tenant
+    secondary = flag.message_tenant if party == "landlord" else flag.message_landlord
+    return primary or secondary or flag.statute_id
+
+
+def _document_link(document_base: str, event: VaultEvent) -> str:
     if not event.source_document_ref:
         return ""
     label = _esc(event.original_filename or "view")
-    return f'<a href="/api/vaults/{_esc(vault_id)}/documents/{event.id}">{label}</a>'
+    return f'<a href="{_esc(document_base)}/{event.id}">{label}</a>'
