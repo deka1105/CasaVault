@@ -16,6 +16,7 @@ class VaultRead(BaseModel):
     share_token: str
     created_at: datetime
     acknowledged_at: Optional[datetime]
+    owner_user_id: Optional[str] = None
 
 
 class EventCreate(BaseModel):
