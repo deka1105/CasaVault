@@ -17,6 +17,20 @@ def _fake_state(signed_in: bool, sub: str = "user_abc123"):
     )
 
 
+class _FakeClerkBase:
+    """Mirrors real usage: `async with Clerk(...) as clerk: ...` — app/auth.py
+    relies on the context manager to close the underlying HTTP client."""
+
+    def __init__(self, **kwargs):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc_info):
+        return False
+
+
 def _request_with_headers(headers: list[tuple[bytes, bytes]]) -> Request:
     return Request({"type": "http", "headers": headers})
 
@@ -36,10 +50,7 @@ def test_get_optional_user_id_returns_none_without_auth_header(monkeypatch):
 def test_get_optional_user_id_returns_sub_on_valid_session(monkeypatch):
     monkeypatch.setattr("app.auth.CLERK_SECRET_KEY", "sk_test_fake")
 
-    class FakeClerk:
-        def __init__(self, **kwargs):
-            pass
-
+    class FakeClerk(_FakeClerkBase):
         async def authenticate_request_async(self, request, options):
             return _fake_state(signed_in=True, sub="user_live")
 
@@ -51,16 +62,34 @@ def test_get_optional_user_id_returns_sub_on_valid_session(monkeypatch):
 def test_get_optional_user_id_returns_none_on_verification_failure(monkeypatch):
     monkeypatch.setattr("app.auth.CLERK_SECRET_KEY", "sk_test_fake")
 
-    class FakeClerk:
-        def __init__(self, **kwargs):
-            pass
-
+    class FakeClerk(_FakeClerkBase):
         async def authenticate_request_async(self, request, options):
             raise RuntimeError("simulated Clerk outage")
 
     monkeypatch.setattr("app.auth.Clerk", FakeClerk)
     request = _request_with_headers([(b"authorization", b"Bearer whatever")])
     assert asyncio.run(get_optional_user_id(request)) is None
+
+
+def test_get_optional_user_id_closes_client_even_on_failure(monkeypatch):
+    """If __aexit__ is never called, this test would hang or error instead
+    of returning None — proving the context-manager path is actually used,
+    not just accepted syntactically."""
+    monkeypatch.setattr("app.auth.CLERK_SECRET_KEY", "sk_test_fake")
+    exited = []
+
+    class FakeClerk(_FakeClerkBase):
+        async def __aexit__(self, *exc_info):
+            exited.append(True)
+            return False
+
+        async def authenticate_request_async(self, request, options):
+            return _fake_state(signed_in=True, sub="user_live")
+
+    monkeypatch.setattr("app.auth.Clerk", FakeClerk)
+    request = _request_with_headers([(b"authorization", b"Bearer whatever")])
+    assert asyncio.run(get_optional_user_id(request)) == "user_live"
+    assert exited == [True]
 
 
 def test_create_vault_without_auth_leaves_owner_unset():
@@ -77,10 +106,7 @@ def test_mine_requires_signin():
 
 
 def test_create_vault_with_auth_sets_owner_and_mine_lists_it(monkeypatch):
-    class FakeClerk:
-        def __init__(self, **kwargs):
-            pass
-
+    class FakeClerk(_FakeClerkBase):
         async def authenticate_request_async(self, request, options):
             return _fake_state(signed_in=True, sub="user_owner_1")
 
