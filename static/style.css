@@ -486,6 +486,34 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .finding-caution .badge { background: var(--caution); color: var(--surface); }
 .finding-body { margin: 0; font-size: 0.92rem; }
 
+/* --- multi-document uploads --------------------------------------------- */
+
+.upload-progress {
+  margin: 0.5rem 0 0;
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.upload-detail { margin-top: 0.5rem; font-size: 0.84rem; }
+.upload-detail ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+.upload-detail li { margin-bottom: 0.2rem; }
+.upload-problem { margin: 0.5rem 0 0; font-size: 0.86rem; }
+
+.doc-list { display: flex; flex-direction: column; gap: 0.2rem; }
+.doc-row { display: flex; align-items: baseline; gap: 0.4rem; }
+.doc-row a { font-size: 0.83rem; overflow-wrap: anywhere; }
+.doc-unread {
+  flex: none;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0 0.25rem;
+}
+.doc-more > summary { font-size: 0.8rem; color: var(--ink-faint); }
+
 /* --- adjudication tally + the passed/unknown groups --------------------- */
 
 .tally {
