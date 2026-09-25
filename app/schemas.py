@@ -157,6 +157,7 @@ class IncidentCreate(BaseModel):
     previously_reported: bool = False
     reported_at: Optional[date] = None
     management_email: Optional[str] = None
+    insurance_email: Optional[str] = None
     reporter_name: Optional[str] = None
 
 

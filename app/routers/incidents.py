@@ -177,6 +177,7 @@ def create_incident(
         previously_reported=payload.previously_reported,
         reported_at=reported,
         management_email=(payload.management_email or "").strip() or None,
+        insurance_email=(payload.insurance_email or "").strip() or None,
     )
     session.add(incident)
     session.commit()
@@ -203,7 +204,7 @@ def create_incident(
 
     address = _address_for(vault, session)
     reporter = (payload.reporter_name or "").strip()
-    draft = build_draft(incident, address, reporter)
+    draft = build_draft(incident, address, reporter, cc=incident.insurance_email)
 
     view = IncidentRead.model_validate(incident, from_attributes=True)
     view.draft = draft
