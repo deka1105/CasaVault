@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app import agent
 from app.agent import GroundedAnswer
 from app.main import app
 
