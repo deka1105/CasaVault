@@ -101,7 +101,24 @@ tracker, and the agent are four thin entry points onto one engine.
 - **Verified against the installed SDK's actual types**, not docs — `Requestish` turned out to need only a `.headers` mapping (a plain FastAPI `Request` satisfies it directly), and `RequestState.payload["sub"]` is the Clerk user id. The `vercel:auth` skill's guidance is 100% Next.js/React and doesn't apply to this Python + vanilla-JS stack at all; don't reach for it here.
 - **Frontend has no bundler**, so Clerk is loaded via a real jsDelivr CDN entry point the package itself declares (`clerk-js`'s `package.json` → `"jsdelivr": "dist/clerk.browser.js"`, confirmed to be a self-contained UMD bundle that resolves its own chunk files relative to `document.currentScript.src` — verified by installing the package and reading the bundle directly, not assumed). Loaded lazily (`loadClerkScript()` in `app.js`) only when `GET /api/config` reports a publishable key, so zero extra requests when sign-in isn't configured.
 - Frontend API: `new Clerk(publishableKey)` → `await clerk.load()` → `clerk.openSignIn()` / `clerk.mountUserButton(node)` / `clerk.addListener(cb)` / `await clerk.session.getToken()`. All verified against `@clerk/clerk-js`'s actual shipped `.d.ts` files.
-- **Not yet live-verified** — no real Clerk application/keys exist yet. Needs the same pattern as Neon/Blob: provision via Vercel Marketplace (dashboard), then the resulting `CLERK_SECRET_KEY`/`CLERK_PUBLISHABLE_KEY` need to be added as project env vars and a real sign-in exercised end to end before this is "done" rather than "wired."
+- **Live-verified as far as possible without a human completing an actual
+  sign-in challenge**: a real Clerk application is now connected
+  (`CLERK_SECRET_KEY`/`CLERK_PUBLISHABLE_KEY` set on the Vercel project —
+  note `CLERK_SECRET_KEY` was already auto-injected for the `development`
+  target when Clerk was connected via the dashboard, so it only needed
+  setting for `production`/`preview`). `GET /api/config` on the live
+  deployment returns the real publishable key. Calling
+  `authenticate_request_async` directly against a deliberately garbage
+  token returns `AuthStatus.SIGNED_OUT` / `reason: TOKEN_INVALID` — a
+  specific rejection, not a crash — proving the secret key is valid and the
+  JWKS network round-trip to Clerk's real backend actually works, both
+  locally and from the deployed Vercel function (`GET /api/vaults/mine`
+  correctly 401s for both no-auth and garbage-token cases on the live
+  site). **What's not verified**: an actual successful sign-in — that needs
+  a human to click through Clerk's real hosted UI (email/OTP, etc.), which
+  isn't something this session can complete unattended. Open
+  `casavault.vercel.app`, click Sign in, and confirm "Your vaults" appears
+  after — that's the one remaining check.
 - **Adding `Vault.owner_user_id` broke production vault creation immediately after this deployed** — real, caught live via `get_runtime_errors`, fixed same-session. Root cause, and this generalizes to **any future model field**: `SQLModel.metadata.create_all()` (`app/database.py:init_db`) only creates tables that don't exist yet; it never alters an existing table's columns. Locally this is invisible — the SQLite file gets deleted constantly during dev/testing, so it's always recreated fresh. Against the real, persistent Neon database it silently left the live `vault` table without the new column until a manual `ALTER TABLE vault ADD COLUMN owner_user_id VARCHAR` was run directly. **Any future SQLModel field addition needs the same manual `ALTER TABLE` against the live database before (or immediately after) deploying** — there is no migration tool wired up (Alembic or similar) to do this automatically. Given the deadline, this is an accepted manual step for now, not something to "fix properly" mid-hackathon.
 
 ## Document uploads (`app/documents.py`, `app/storage.py`, `app/routers/documents.py`)
