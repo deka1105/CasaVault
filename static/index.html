@@ -25,77 +25,281 @@
 
     <!-- ============================ LANDING ============================ -->
     <section id="landing" hidden>
-      <div class="card hero">
-        <h1>A statute-aware record of your tenancy</h1>
-        <p class="lede">
-          Neither side loses because they're wrong. They lose because they can't prove it.
-          Put the lease, the notices and the repair requests in one place — every one of them
-          adjudicated against Philadelphia and Pennsylvania law, with the section that produced
-          each finding shown next to it.
-        </p>
-        <ol class="pipeline">
-          <li><strong>Extract</strong> A model reads each document into a fixed schema. It never judges legality.</li>
-          <li><strong>Adjudicate</strong> A deterministic rules engine joins those facts against the statute table.</li>
-          <li><strong>Track</strong> Events that start statutory clocks become dated deadlines.</li>
-          <li><strong>Answer</strong> An agent answers from your vault and the table — or refuses.</li>
-        </ol>
-      </div>
 
-      <div class="grid-2" style="margin-top: 1.25rem;">
-        <section class="card">
-          <div class="section-head">
-            <h2>Start a vault</h2>
-            <p class="hint">No account needed</p>
-          </div>
-          <form id="create-vault-form">
-            <div class="field-row-group">
-              <label class="field field-grow">
-                <span>Label</span>
-                <input id="new-vault-label" type="text" placeholder="e.g. 123 Elm St, Apt 2" autocomplete="off">
-              </label>
-              <label class="field">
-                <span>Zip code</span>
-                <input id="new-vault-zip" type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="19121" autocomplete="postal-code">
-              </label>
-            </div>
-            <p class="hint" style="margin: -0.4rem 0 0.9rem; color: var(--ink-faint); font-size: 0.8rem;">
-              The zip decides your Right to Counsel routing — covered zips get the Philly Tenant
-              Hotline, everyone else gets PhillyTenant.org.
+      <!-- ---------------------------------------------------- hero -->
+      <div class="lp-hero">
+        <div class="wrap lp-hero-grid">
+          <div class="lp-hero-copy">
+            <p class="eyebrow">Philadelphia &amp; Pennsylvania · tenants and small landlords</p>
+            <h1>Your tenancy, adjudicated against the law — line by line, with the citation.</h1>
+            <p class="lede">
+              Put the lease, the notices, the repair requests and the photos in one place.
+              Every document is read into facts, every fact is checked against a verified
+              Philadelphia and PA statute table, and every finding shows the section that
+              produced it. Deadlines start themselves. Nothing is asserted without a source.
             </p>
-            <button type="submit" class="btn btn-primary">Create vault</button>
-          </form>
-          <p id="create-error" class="error" hidden></p>
-
-          <div class="divider"><span>or open one you already have</span></div>
-
-          <form id="open-vault-form" class="inline-form">
-            <input id="open-vault-id" type="text" placeholder="vault id or share token" autocomplete="off" aria-label="Vault id or share token">
-            <button type="submit" class="btn btn-secondary">Open</button>
-          </form>
-          <p id="open-error" class="error" hidden></p>
-        </section>
-
-        <section id="my-vaults" class="card" hidden>
-          <div class="section-head">
-            <h2>Your vaults</h2>
-            <p class="hint">Vaults you created while signed in</p>
+            <div class="lp-cta">
+              <a class="btn btn-primary btn-lg" href="#start">Create a vault — no account</a>
+              <a class="btn btn-secondary btn-lg" href="#how">See how it works</a>
+            </div>
+            <ul class="lp-trust">
+              <li>No signup — a vault is its own link</li>
+              <li>Every claim cites a statute or a vault entry</li>
+              <li>Rights information, not legal advice</li>
+            </ul>
           </div>
-          <ul id="my-vaults-list" class="vault-list"></ul>
-        </section>
 
+          <!-- A faithful miniature of the real output, built from the same
+               components and real statute text. Labelled as an example so it
+               is never mistaken for live data. -->
+          <aside class="lp-preview" aria-label="Example of what the tool produces">
+            <div class="lp-preview-chrome"><span class="lp-dot"></span>Example output</div>
+            <div class="lp-preview-body">
+              <div class="tally">
+                <span><strong>8</strong> rules checked</span>
+                <span class="tally-flag">1 flagged</span>
+                <span class="tally-ok">4 no issue</span>
+                <span class="tally-unknown">3 need facts</span>
+              </div>
+              <div class="finding finding-violation">
+                <div class="finding-head"><span class="badge">violation</span></div>
+                <p class="finding-body">This lease tries to make you waive your deposit rights. That waiver has no effect.</p>
+                <span class="cite">68 P.S. § 250.511a(f)</span>
+              </div>
+              <div class="rule-row">
+                <span class="rule-mark mark-ok">✓</span>
+                <div class="rule-body">
+                  <div>A Certificate of Rental Suitability and the Partners in Good Housing handbook must be given at signing.</div>
+                  <span class="cite">Phila. Code § 9-3903</span>
+                </div>
+              </div>
+              <div class="rule-row">
+                <span class="rule-mark mark-unknown">?</span>
+                <div class="rule-body">
+                  <div>The owner must hold a current Philadelphia rental license to collect rent or recover possession.</div>
+                  <p class="next-step">A lease will not tell you this. Look the property up in L&amp;I's property search.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
 
-      <section class="card" style="margin-top: 1.25rem;">
-        <div class="section-head">
-          <h2>The statute table</h2>
-          <p class="hint" id="statute-count"></p>
+      <!-- ------------------------------------------------- problem -->
+      <div class="lp-section lp-band">
+        <div class="wrap lp-problem">
+          <p class="lp-stat"><strong>87%</strong><span>of landlords in Philadelphia eviction court had a lawyer</span></p>
+          <p class="lp-stat"><strong>16%</strong><span>of renters did</span></p>
+          <p class="lp-stat"><strong>~10</strong><span>zip codes are covered by Right to Counsel</span></p>
+          <p class="lp-problem-line">
+            Neither side loses because they're wrong. They lose because they can't prove it.
+          </p>
         </div>
-        <p class="hint" style="color: var(--ink-soft); font-size: 0.85rem; max-width: 70ch;">
-          This is the product. Every flag and every agent answer resolves to one of these rows.
-          Rules still awaiting a pin cite are marked draft and never render to a user.
-        </p>
-        <ul id="statute-list" class="statute-list statute-scroll"></ul>
-      </section>
+      </div>
+
+      <!-- ---------------------------------------------- how it works -->
+      <div class="lp-section" id="how">
+        <div class="wrap">
+          <h2 class="lp-h2">One engine, four stages</h2>
+          <p class="lp-sub">
+            The model reads. The law decides. Those are deliberately separate jobs — an
+            extractor that never judges legality, and a rules engine that never guesses.
+          </p>
+          <ol class="lp-steps">
+            <li>
+              <span class="lp-step-n">1</span>
+              <h3>Extract</h3>
+              <p>A language model parses each document into a fixed schema — deposit amount, months' rent, licence status, what you were handed at signing. It never decides whether anything is legal.</p>
+            </li>
+            <li>
+              <span class="lp-step-n">2</span>
+              <h3>Adjudicate</h3>
+              <p>A deterministic rules engine joins those facts against a statute table of verified Philadelphia and Pennsylvania rules. Every flag carries the section that produced it.</p>
+            </li>
+            <li>
+              <span class="lp-step-n">3</span>
+              <h3>Track</h3>
+              <p>Events that start statutory clocks become dated deadlines — like the 30 days a landlord has to return a deposit once you've given a written forwarding address.</p>
+            </li>
+            <li>
+              <span class="lp-step-n">4</span>
+              <h3>Answer</h3>
+              <p>A grounded agent answers questions using only your vault and the statute table. When it can't ground an answer, it says so and hands you to a human.</p>
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------- capabilities -->
+      <div class="lp-section lp-band">
+        <div class="wrap">
+          <h2 class="lp-h2">What it does</h2>
+          <p class="lp-sub">Everything listed here is built and working.</p>
+          <div class="lp-caps">
+            <article class="lp-cap">
+              <h3>Upload a whole lease at once</h3>
+              <p>A real Philadelphia lease is 25 PDFs, not one. Select the entire bundle: it files as a single timeline entry, and the documents that actually carry your terms are the ones read.</p>
+            </article>
+            <article class="lp-cap">
+              <h3>Findings with citations</h3>
+              <p>Each finding names the statute section behind it. A claim without a source is treated as a bug, not a style choice.</p>
+            </article>
+            <article class="lp-cap">
+              <h3>Checked, not just flagged</h3>
+              <p>A clean lease is a result. You see what passed, what failed, and what can't be judged yet — with the next step for each unknown.</p>
+            </article>
+            <article class="lp-cap">
+              <h3>Deadlines that start themselves</h3>
+              <p>Record a move-out with a written forwarding address and the 30-day deposit clock appears, dated, before you'd have thought to ask.</p>
+            </article>
+            <article class="lp-cap">
+              <h3>An agent that refuses</h3>
+              <p>Ask questions of your own record. Answers cite a vault entry or a statute row — and when neither supports an answer, it declines and routes you to a human.</p>
+            </article>
+            <article class="lp-cap">
+              <h3>Tenant view and landlord view</h3>
+              <p>One rule, two framings. The 30-day deposit window is a tenant's right and a landlord's obligation — the same row, read from your side.</p>
+            </article>
+            <article class="lp-cap">
+              <h3>A read-only link for the other side</h3>
+              <p>Share the record without handing over control. The link can't write to your vault, and one click timestamps that the other party saw it.</p>
+            </article>
+            <article class="lp-cap">
+              <h3>A printable evidence packet</h3>
+              <p>One chronological page — timeline, findings, citations, deadlines — that prints straight to PDF for a hearing or a mediator.</p>
+            </article>
+            <article class="lp-cap">
+              <h3>Right to Counsel check</h3>
+              <p>Covered zip codes route to the Philly Tenant Hotline. Everyone else gets PhillyTenant.org, because most renters are outside the program.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------- the agent -->
+      <div class="lp-section">
+        <div class="wrap lp-agent">
+          <div class="lp-agent-copy">
+            <h2 class="lp-h2">The agent is a query interface, not an oracle</h2>
+            <p class="lp-sub">
+              Its retrieval surface is your vault and the statute table — nothing else. Every
+              answer must cite one of them, and the citation is verified against your actual
+              records before you ever see it. A claimed source that doesn't exist becomes a
+              refusal, no matter how confident the model was.
+            </p>
+            <p class="lp-sub">
+              The refusal isn't a limitation we're apologising for. It's the feature.
+            </p>
+          </div>
+          <div class="lp-agent-examples">
+            <div class="answer">
+              <div class="answer-label">Answer, grounded in this vault</div>
+              <p class="answer-text">30 days from your move-out on 1 August 2026 — so by 31 August 2026.</p>
+              <span class="cite">68 P.S. § 250.512</span>
+            </div>
+            <div class="answer">
+              <div class="answer-label">Answer, grounded in this vault</div>
+              <p class="answer-text">You first reported the leak on 14 March 2026, with a photo attached.</p>
+              <span class="cite">event #7 · repair_requested · 2026-03-14</span>
+            </div>
+            <div class="answer answer-refusal">
+              <div class="answer-label">Not answerable from this record</div>
+              <p class="answer-text">"Will I win in court?" — I can't answer that, and I won't guess.</p>
+              <div class="handoff"><strong>Talk to a human: </strong>Philly Tenant Hotline, (267) 443-2500</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- -------------------------------------------- statute table -->
+      <div class="lp-section lp-band">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 class="lp-h2">The statute table is the product</h2>
+            <p class="hint" id="statute-count"></p>
+          </div>
+          <p class="lp-sub">
+            Every flag and every agent answer resolves to one of these rows — loaded live from
+            this deployment right now. Rules still awaiting a pin cite are marked draft and
+            never reach a user.
+          </p>
+          <ul id="statute-list" class="statute-list statute-scroll"></ul>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------- start -->
+      <div class="lp-section" id="start">
+        <div class="wrap">
+          <h2 class="lp-h2">Start a vault</h2>
+          <p class="lp-sub">
+            No account, no email. A vault is addressed by its own link — keep it and you keep
+            access. Signing in is optional and only makes your vaults easier to find later.
+          </p>
+          <div class="grid-2">
+            <section class="card">
+              <form id="create-vault-form">
+                <div class="field-row-group">
+                  <label class="field field-grow">
+                    <span>Label</span>
+                    <input id="new-vault-label" type="text" placeholder="e.g. 123 Elm St, Apt 2" autocomplete="off">
+                  </label>
+                  <label class="field">
+                    <span>Zip code</span>
+                    <input id="new-vault-zip" type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="19121" autocomplete="postal-code">
+                  </label>
+                </div>
+                <p class="hint" style="margin: -0.4rem 0 0.9rem; color: var(--ink-faint); font-size: 0.8rem;">
+                  The zip decides your Right to Counsel routing — covered zips get the Philly
+                  Tenant Hotline, everyone else gets PhillyTenant.org.
+                </p>
+                <button type="submit" class="btn btn-primary">Create vault</button>
+              </form>
+              <p id="create-error" class="error" hidden></p>
+
+              <div class="divider"><span>or open one you already have</span></div>
+
+              <form id="open-vault-form" class="inline-form">
+                <input id="open-vault-id" type="text" placeholder="vault id or share token" autocomplete="off" aria-label="Vault id or share token">
+                <button type="submit" class="btn btn-secondary">Open</button>
+              </form>
+              <p id="open-error" class="error" hidden></p>
+            </section>
+
+            <section id="my-vaults" class="card" hidden>
+              <div class="section-head">
+                <h2>Your vaults</h2>
+                <p class="hint">Vaults you created while signed in</p>
+              </div>
+              <ul id="my-vaults-list" class="vault-list"></ul>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------- limits -->
+      <div class="lp-section lp-band">
+        <div class="wrap">
+          <h2 class="lp-h2">What it does not do</h2>
+          <p class="lp-sub">Stated plainly, because a tool in this space that overclaims is worse than none.</p>
+          <ul class="lp-limits">
+            <li><strong>It is not legal advice</strong> and creates no lawyer–client relationship. It tells you what the law says and where to read it.</li>
+            <li><strong>Philadelphia and Pennsylvania only.</strong> The engine is jurisdiction-agnostic, but the only statute table that ships is this one.</li>
+            <li><strong>It will not answer from general knowledge.</strong> If your vault and the table don't support an answer, you get a refusal and a phone number.</li>
+            <li><strong>Unverified rules stay hidden.</strong> Rules without a confirmed pin cite are marked draft and never render, even when they'd match.</li>
+            <li><strong>It cannot check a rental licence for you.</strong> That lives in L&amp;I's records, not your lease — the vault tells you to go and look.</li>
+          </ul>
+        </div>
+      </div>
+
+      <footer class="lp-footer">
+        <div class="wrap">
+          <p>
+            CasaVault gives rights information, not legal advice, and does not create a
+            lawyer–client relationship. For advice about your own situation, contact the
+            Philly Tenant Hotline at (267) 443-2500 or PhillyTenant.org.
+          </p>
+        </div>
+      </footer>
     </section>
 
     <!-- =========================== VAULT VIEW ========================== -->
