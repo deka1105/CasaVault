@@ -457,16 +457,23 @@ function renderEventDocuments(event) {
 
   const shown = docs.slice(0, 3);
   const rest = docs.length - shown.length;
-  const row = (d) =>
-    el("div", { class: "doc-row" }, [
+  const row = (d) => {
+    const full = d.original_filename || "download";
+    return el("div", { class: "doc-row" }, [
       el("a", {
         href: `${vaultPath("/documents")}/${d.id}`,
         target: "_blank",
         rel: "noopener",
-        text: d.original_filename || "download",
+        // Real lease filenames run to 70+ characters
+        // ("Form__ADDENDUM_FOR_RENT_CONCESSION_-_Lease_5_12_2026_to_8_11_2027.pdf"),
+        // which swamps the timeline. Shortened for display, full name on hover
+        // and in the download itself.
+        title: full,
+        text: shortenFilename(full),
       }),
       d.extraction_status === "not_read" ? el("span", { class: "doc-unread", text: "not read" }) : null,
     ]);
+  };
 
   return el("div", { class: "doc-list" }, [
     ...shown.map(row),
