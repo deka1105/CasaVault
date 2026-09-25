@@ -90,22 +90,26 @@ tracker, and the agent are four thin entry points onto one engine.
 - `POST /api/vaults/{id}/ask` — the grounded agent (`app/agent.py`). Live-verified: refuses on ungroundable questions, refuses on "will I win in court"-style legal conclusions, and answers with a citation when the vault/statute data actually supports it. See the Agent section below for how refusal is enforced in code, not just prompted.
 - `POST /api/vaults/{id}/documents` (multipart), `GET /api/vaults/{id}/documents/{event_id}` — real file upload/download, backing `document_upload` events. See below.
 
-## Document uploads (`app/documents.py`, `app/routers/documents.py`)
+## Document uploads (`app/documents.py`, `app/storage.py`, `app/routers/documents.py`)
 
-- Files land on local disk under `uploads/<vault_id>/<random-name><ext>`
-  (`UPLOADS_DIR` in `app/config.py`, gitignored). The on-disk name is always
-  randomized — the client's filename is never trusted for the path, only for
-  its extension (allowlisted: pdf/jpg/jpeg/png/heic/txt/docx) and for display
+- The on-disk/durable name is always randomized (`app/documents.py:stored_filename`)
+  — the client's filename is never trusted for the path, only for its
+  extension (allowlisted: pdf/jpg/jpeg/png/heic/txt/docx) and for display
   (`VaultEvent.original_filename`, used only in the download's
   `Content-Disposition` and in the UI/evidence packet, never as a path).
   Uploads are capped at 15MB (`MAX_UPLOAD_BYTES`).
 - This is public-facing (PLAN.md: deploy to a public URL), so treat upload
-  handling as attack surface: `FileResponse`'s default
-  `content_disposition_type="attachment"` is load-bearing — never switch an
-  uploaded file to inline serving, since a stored .txt/.pdf rendered inline
-  under this origin is a stored-content risk.
+  handling as attack surface: downloads are always forced to
+  `Content-Disposition: attachment` (built manually in
+  `documents.py:_content_disposition`, CR/LF/quote-stripped against header
+  injection) — never switch an uploaded file to inline serving, since a
+  stored .txt/.pdf rendered inline under this origin is a stored-content
+  risk.
 - Creates a `document_upload` `VaultEvent`, then hands the stored file to
   the extractor (see below), which fills in `facts` on success.
+- **Storage backend is abstracted in `app/storage.py`** specifically so this
+  app doesn't break on Vercel — see the Vercel deployment section below for
+  why and how.
 
 ## Front end (`static/`)
 
