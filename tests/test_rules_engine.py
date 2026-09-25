@@ -2,7 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.condition_eval import UnsafeConditionError, evaluate_condition
+from app.config import STATUTES_PATH
 from app.main import app
+from app.statutes_loader import load_statute_table
 
 
 # --- condition_eval unit tests -----------------------------------------
