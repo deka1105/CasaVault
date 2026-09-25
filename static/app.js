@@ -709,6 +709,162 @@ function setupAsk() {
   });
 }
 
+/* --- city records -------------------------------------------------------- */
+
+async function pullCityRecord() {
+  const btn = $("pull-city-btn");
+  const errorEl = $("city-record-error");
+  const resultEl = $("city-record-result");
+  clearError(errorEl);
+  btn.disabled = true;
+  btn.textContent = "Checking…";
+
+  try {
+    const data = await api(vaultPath("/city-record"), { method: "POST" });
+    const items = [];
+
+    if (data.unavailable) {
+      items.push(el("div", { class: "banner banner-caution", text: data.note || "City records are unavailable right now." }));
+    } else if (!data.found) {
+      items.push(el("div", { class: "banner banner-caution", text: "No City record found for this address." }));
+    } else {
+      items.push(el("div", { class: "banner" }, [
+        el("strong", { text: `Checked: ${data.checked}. ` }),
+        `${data.rental_licences} licence record${data.rental_licences === 1 ? "" : "s"}, ` +
+        `${data.open_violations} open violation${data.open_violations === 1 ? "" : "s"}.`,
+      ]));
+      if (Object.keys(data.facts).length) {
+        items.push(
+          el("div", { class: "cite", style: "margin-top: 0.5rem" },
+            Object.entries(data.facts).map(([k, v]) =>
+              el("div", { text: `${k}: ${v}` })
+            )
+          )
+        );
+      }
+    }
+
+    replaceChildren(resultEl, items);
+    resultEl.hidden = false;
+    await refreshData();
+  } catch (err) {
+    showError(errorEl, err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Pull City records";
+  }
+}
+
+/* --- incidents ----------------------------------------------------------- */
+
+async function loadIncidents() {
+  const section = $("incident-list-section");
+  if (!isOwner()) { section.hidden = true; return; }
+
+  try {
+    const incidents = await api(vaultPath("/incidents"));
+    if (!incidents.length) { section.hidden = true; return; }
+
+    const tbody = $("incidents-table").querySelector("tbody");
+    replaceChildren(tbody, incidents.map((inc) => {
+      const status = inc.resolved_at ? "resolved" : inc.work_started_at ? "in progress" : inc.acknowledged_at ? "acknowledged" : "reported";
+      return el("tr", {}, [
+        el("td", { class: "num", text: formatDate(inc.reported_at) }),
+        el("td", { text: inc.category.replace(/_/g, " ") }),
+        el("td", { text: inc.urgency }),
+        el("td", { text: status }),
+        el("td", { class: "cite", text: `#${inc.reference_code}` }),
+      ]);
+    }));
+    section.hidden = false;
+  } catch {
+    section.hidden = true;
+  }
+}
+
+function setupIncidentForm() {
+  $("incident-date").valueAsDate = new Date();
+
+  $("incident-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorEl = $("incident-error");
+    const draftEl = $("incident-draft");
+    clearError(errorEl);
+    draftEl.hidden = true;
+    const btn = $("incident-submit");
+    btn.disabled = true;
+    btn.textContent = "Drafting…";
+
+    try {
+      const body = {
+        category: $("incident-category").value,
+        urgency: $("incident-urgency").value,
+        summary: $("incident-summary").value.trim(),
+        detail: $("incident-detail").value.trim() || null,
+        affects_essential_service: $("incident-essential").checked,
+        previously_reported: $("incident-repeat").checked,
+        reported_at: $("incident-date").value || null,
+        management_email: $("incident-email").value.trim() || null,
+        reporter_name: $("incident-name").value.trim() || null,
+      };
+
+      const result = await api(vaultPath("/incidents"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const draft = result.draft;
+      replaceChildren(draftEl, [
+        el("div", { class: "banner", style: "margin-top: 1rem" }, [
+          el("strong", { text: `Incident #${result.reference_code} recorded. ` }),
+          "Review the draft below, then send it from your own email.",
+        ]),
+        el("div", { class: "draft-preview", style: "margin-top: 0.75rem" }, [
+          el("div", { class: "field-label", text: "To" }),
+          el("div", { text: draft.to || "(no email provided)" }),
+          el("div", { class: "field-label", style: "margin-top: 0.5rem", text: "Subject" }),
+          el("div", { style: "font-weight: 600", text: draft.subject }),
+          el("div", { class: "field-label", style: "margin-top: 0.5rem", text: "Body" }),
+          el("pre", { class: "draft-body", text: draft.body }),
+        ]),
+        el("div", { class: "actions", style: "margin-top: 0.75rem" }, [
+          el("a", {
+            class: "btn btn-primary",
+            href: draft.mailto,
+            text: "Open in your email app",
+          }),
+          el("button", {
+            type: "button",
+            class: "btn btn-secondary",
+            text: "Copy text",
+            onclick: async (ev) => {
+              try {
+                await navigator.clipboard.writeText(`Subject: ${draft.subject}\n\n${draft.body}`);
+                ev.target.textContent = "Copied";
+                setTimeout(() => { ev.target.textContent = "Copy text"; }, 1500);
+              } catch {
+                ev.target.textContent = "Copy failed";
+                setTimeout(() => { ev.target.textContent = "Copy text"; }, 1500);
+              }
+            },
+          }),
+        ]),
+      ]);
+      draftEl.hidden = false;
+
+      $("incident-form").reset();
+      $("incident-date").valueAsDate = new Date();
+      await Promise.all([refreshData(), loadIncidents()]);
+    } catch (err) {
+      showError(errorEl, err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Draft the notice";
+    }
+  });
+}
+
 /* --- forms --------------------------------------------------------------- */
 
 /* The landing no longer creates a record directly — it looks up an address.
