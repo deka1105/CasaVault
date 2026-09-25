@@ -777,27 +777,64 @@ function collectStructuredFacts() {
   return facts;
 }
 
-async function uploadDocument() {
-  const file = $("event-file").files[0];
-  if (!file) throw new Error("Choose a file to upload.");
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error(`That file is ${(file.size / 1024 / 1024).toFixed(1)}MB. The limit is ${MAX_UPLOAD_BYTES / 1024 / 1024}MB.`);
+/* A real Philadelphia lease is ~25 PDFs, not one. They are uploaded one
+ * request at a time — Vercel caps a function's request body at 4.5MB, so an
+ * 8.8MB bundle cannot arrive together — but they all attach to a SINGLE
+ * event, so signing a lease is one timeline entry rather than twenty-five.
+ *
+ * The full filename list travels with every request as `manifest`, which is
+ * what lets the server decide across the batch which files are worth
+ * spending a model request on (app/triage.py) while staying stateless.
+ */
+async function uploadDocuments() {
+  const files = [...$("event-file").files];
+  if (!files.length) throw new Error("Choose at least one file to upload.");
+
+  const oversized = files.filter((f) => f.size > MAX_UPLOAD_BYTES);
+  if (oversized.length) {
+    throw new Error(
+      `${oversized[0].name} is ${(oversized[0].size / 1024 / 1024).toFixed(1)}MB. ` +
+        `The limit is ${MAX_UPLOAD_BYTES / 1024 / 1024}MB per file.`
+    );
   }
 
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("occurred_at", $("event-date").value);
-  if ($("event-notes").value) formData.append("notes", $("event-notes").value);
+  const manifest = JSON.stringify(files.map((f) => f.name));
+  const results = [];
+  let eventId = null;
 
-  const res = await fetch(`/api/vaults/${encodeURIComponent(state.vaultId)}/documents`, {
-    method: "POST",
-    body: formData,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `${res.status} ${res.statusText}`);
+  for (const [i, file] of files.entries()) {
+    setUploadProgress(`Uploading ${i + 1} of ${files.length} — ${file.name}`);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("occurred_at", $("event-date").value);
+    formData.append("event_type", $("event-type").value);
+    formData.append("manifest", manifest);
+    formData.append("index", String(i));
+    if ($("event-notes").value) formData.append("notes", $("event-notes").value);
+    if (eventId !== null) formData.append("event_id", String(eventId));
+
+    const res = await fetch(`/api/vaults/${encodeURIComponent(state.vaultId)}/documents`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(`${file.name}: ${body.detail || `${res.status} ${res.statusText}`}`);
+    }
+    const event = await res.json();
+    eventId = event.id; // everything after the first attaches to this event
+    results.push({ name: file.name, extraction: event.extraction });
   }
-  return res.json();
+
+  setUploadProgress("");
+  return results;
+}
+
+function setUploadProgress(text) {
+  const el = $("upload-progress");
+  el.textContent = text;
+  el.hidden = !text;
 }
 
 /* The document is always stored; reading it is best-effort on top. So an
