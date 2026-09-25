@@ -30,6 +30,14 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/config")
+def get_config():
+    """Public, non-secret config the frontend needs at load time. The
+    publishable key is safe client-side by design (Clerk); null just means
+    sign-in isn't configured yet and the frontend should skip it entirely."""
+    return {"clerk_publishable_key": CLERK_PUBLISHABLE_KEY}
+
+
 @app.get("/api/statutes")
 def list_statutes():
     """Verified rules only — draft rules never leave the server. See
