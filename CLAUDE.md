@@ -201,13 +201,25 @@ start or redeploy. Fixed by making both swappable, not by rearchitecting:
     also didn't work here (`422`). What worked: `create_deployment` with an
     explicit `deploymentId` (redeploy of the built one) and `target:
     "production"`.
-  - LLM extraction/agent were **not** re-tested against this live
-    deployment — `GEMINI_API_KEY` was never added to the Vercel project
-    (deliberately, to conserve the free-tier daily quota already mostly
-    used locally). Add it as a project env var and redeploy to enable.
-    Storage/persistence — the actual subject of this fix — is fully proven;
-    extraction/agent logic itself was already proven separately, against
-    the real Gemini API, earlier this session.
+  - `GEMINI_API_KEY` is now on the Vercel project too. **Real bug #3, found
+    and fixed live**: `vercel.json` had `maxDuration: 120` — more
+    conservative than Vercel's own 300s default — and a real extraction
+    call on Vercel exceeded it (`Vercel Runtime Timeout Error: Task timed
+    out after 120 seconds`, confirmed via `get_runtime_errors`). Bumped to
+    `300` (Hobby plan's actual ceiling) and redeployed; a second live
+    extraction call then completed **without** timing out — direct proof
+    the fix worked, not just a config change taken on faith.
+  - That second call still couldn't extract (`facts: {}`) — but the
+    *reason* is the same known 20-req/day free-tier limit, confirmed via a
+    real 429 in the logs, not a new bug. This is actually a positive
+    signal: the fail-safe design worked exactly as intended in production
+    — extraction failed cleanly, facts stayed empty, the upload still
+    succeeded with a 200, no crash. Extraction/agent logic itself was
+    already proven correct against real (successful) Gemini calls earlier
+    this session, locally. **A live extraction success against this actual
+    deployment is still pending** — needs the key's tier upgraded (or a
+    fresh daily quota window) before it can be shown, not more code
+    changes.
 
 ## Front end (`static/`)
 
