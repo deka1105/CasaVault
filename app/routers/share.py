@@ -104,6 +104,7 @@ def rtc_check(share_token: str, request: Request, session: Session = Depends(get
 @router.get("/evidence", response_class=HTMLResponse)
 def evidence_packet(
     share_token: str,
+    request: Request,
     party: Party = Query("landlord"),
     session: Session = Depends(get_session),
 ):
@@ -125,6 +126,9 @@ def evidence_packet(
         # /api/vaults/{vault.id}/documents/... would leak the owner
         # credential straight into the shared packet's HTML.
         document_base=f"/api/vaults/by-share-token/{share_token}/documents",
+        deadline_descriptions={
+            d.id: describe_deadline(d, request.app.state.statutes, party) for d in deadlines
+        },
     )
 
 
