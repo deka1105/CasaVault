@@ -547,6 +547,43 @@ takes an explicit `vault_name`; the share route passes "Untitled vault". Found
 by a test that only failed because its vault happened to have no label — the
 earlier share tests all used labelled vaults and passed straight over it.
 
+## Landing page (`static/index.html`, `#landing`)
+
+The first thing any visitor sees, and the surface a judge hits first — 20% of
+the rubric is UX and 15% presentation. Same single page, no build step and no
+routing change: `#landing` and `#vault-view` are siblings, and `app.js` shows
+one or the other off the `?vault=` / `?share=` query params exactly as before.
+
+Structure: hero with a live-looking output preview → the problem, in numbers →
+the four stages → a capability grid → the agent's answer/refusal examples →
+the **live** statute table → create-a-vault → what it does *not* do → footer.
+
+Rules that keep it honest, which matter more here than anywhere else in the
+app because this is the page that makes claims:
+
+- **The hero preview is built from the real components** (`.finding`,
+  `.rule-row`, `.cite`, `.tally`), not a picture of them, so it cannot drift
+  from what the product actually renders. It is labelled "Example output".
+- **The statute table section is live**, fetched from `GET /api/statutes` on
+  page load. It is the one section that proves itself.
+- **Every capability listed is built and working.** PLAN.md's non-negotiable
+  ("nothing in the demo video that does not work end to end") applies to the
+  landing page too — if a feature is cut, cut its card.
+- **There is a "What it does not do" section.** Jurisdiction limits, not legal
+  advice, the agent's refusal, draft rules never rendering, and the fact that
+  a rental licence can't be checked from a lease. A tool in this space that
+  overclaims is worse than none.
+
+Layout note: `<main>` no longer carries the width constraint — the landing
+needs full-bleed bands, so `#vault-view` and `.wrap` carry `max-width: 1080px`
+instead. `#landing .statute-scroll` also lifts the vault view's 420px scroll
+cap: a list clipped through the middle of a card reads as broken rather than
+scrollable, and this is the "the statute table is the product" moment.
+
+Verified: no horizontal overflow at 320/360/390/414/768/1100/1440px, both
+colour schemes, and `/` vs `/?vault=` still switch correctly (landing shown
+with 9 statutes; vault view shown with findings rendered).
+
 ## Rules engine (`app/rules_engine.py`, `app/condition_eval.py`)
 
 - `aggregate_facts` merges every `VaultEvent.facts` dict for a vault into one
