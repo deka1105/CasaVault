@@ -515,7 +515,26 @@ limit before uploading so the user gets told immediately. Overridable via the
   data-quality nicety.
 - `party_framing.tenant` / `party_framing.landlord` — the same rule, two
   wordings, for the tenant-view/landlord-view toggle. One condition, two
-  framings; do not fork the rule itself per party.
+  framings; do not fork the rule itself per party. **Both are now mandatory
+  on every verified rule**, enforced by
+  `tests/test_rules_engine.py::test_every_verified_rule_carries_both_party_framings`.
+  Three verified rules (`deposit_freeze_five_years`, `deposit_escrow_required`,
+  `open_violations_over_30_days`) previously shipped with none, so every code
+  path that renders a flag fell through to the raw rule id — a user was shown
+  the literal string `deposit_escrow_required` where a sentence belonged.
+  New framings are a plain-English restatement of that rule's own verified
+  `detail`; they make no claim the rule did not already make.
+- Deadline-type rules keep a `{deadline}` placeholder in their framing that is
+  only filled once an event starts the clock. Anything rendering the raw table
+  (the statute browser on the landing page) must not print it verbatim — see
+  `statuteSummary()` in `static/app.js`, which shows `clock`/`requires` for
+  those rules instead.
+- Deadlines are framed per party at **render time**
+  (`rules_engine.describe_deadline`), not at creation time. `Deadline.description`
+  is baked from the tenant framing when the clock starts, so a landlord reading
+  their own vault used to be told "Your landlord has until ..." about
+  themselves. Doing it at render time avoids persisting a second copy — and
+  therefore avoids another manual `ALTER TABLE` against the live database.
 - `condition` strings are the informal spec for the rules-engine DSL — no
   engine implements them yet, so the first implementation decides the actual
   evaluation syntax.
