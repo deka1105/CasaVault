@@ -93,3 +93,84 @@ def test_upload_survives_extraction_raising(monkeypatch):
         )
     assert res.status_code == 200
     assert res.json()["facts"] == {}
+
+
+# --- an upload must say WHY it extracted nothing --------------------------
+
+def _upload(client, vault_id, body=b"a notice"):
+    return client.post(
+        f"/api/vaults/{vault_id}/documents",
+        files={"file": ("notice.txt", body, "text/plain")},
+        data={"occurred_at": "2026-02-01"},
+    )
+
+
+def test_upload_reports_rate_limiting_rather_than_silently_empty_facts(monkeypatch):
+    """The free tier's daily cap is 20 requests. Hitting it used to look
+    identical to a document that genuinely stated nothing — during a demo
+    that reads as a broken product, not a quota."""
+    def boom(_path):
+        raise RuntimeError(
+            "Error code: 429 - Rate limit exceeded for model gemini-3.8-flash "
+            "(limit: 20 requests per day on Free Tier)"
+        )
+
+    monkeypatch.setattr(documents_router, "extract_facts_from_file", boom)
+
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={}).json()
+        res = _upload(client, vault["id"])
+
+    assert res.status_code == 200, "the upload itself must still succeed"
+    body = res.json()
+    assert body["facts"] == {}
+    assert body["source_document_ref"], "the document is stored regardless"
+    assert body["extraction"]["status"] == "rate_limited"
+    assert "daily limit" in body["extraction"]["message"]
+
+
+def test_upload_distinguishes_a_transient_outage_from_a_quota_limit(monkeypatch):
+    monkeypatch.setattr(
+        documents_router,
+        "extract_facts_from_file",
+        lambda _p: (_ for _ in ()).throw(RuntimeError("Error code: 503 - service_unavailable, high demand")),
+    )
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={}).json()
+        res = _upload(client, vault["id"])
+    assert res.json()["extraction"]["status"] == "upstream_error"
+
+
+def test_upload_of_a_document_stating_nothing_is_reported_as_no_facts(monkeypatch):
+    monkeypatch.setattr(documents_router, "extract_facts_from_file", lambda _p: {})
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={}).json()
+        res = _upload(client, vault["id"])
+    info = res.json()["extraction"]
+    assert info["status"] == "no_facts"
+    assert "stated none" in info["message"]
+
+
+def test_successful_extraction_is_reported_as_ok(monkeypatch):
+    monkeypatch.setattr(
+        documents_router,
+        "extract_facts_from_file",
+        lambda _p: {"landlord_rental_license_valid": False},
+    )
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={}).json()
+        res = _upload(client, vault["id"])
+        flags = client.get(f"/api/vaults/{vault['id']}/flags").json()
+
+    assert res.json()["extraction"]["status"] == "ok"
+    assert any(f["statute_id"] == "no_rental_license" for f in flags)
+
+
+def test_oversized_upload_is_rejected_with_a_readable_limit():
+    """Capped below Vercel's 4.5MB request-body limit so the rejection comes
+    from here, with a reason, instead of an opaque platform error."""
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={}).json()
+        res = _upload(client, vault["id"], body=b"x" * (documents.MAX_UPLOAD_BYTES + 1))
+    assert res.status_code == 413
+    assert "limit" in res.json()["detail"]
