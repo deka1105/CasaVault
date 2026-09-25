@@ -335,6 +335,7 @@ async function init() {
   setupEventForm();
   setupAcknowledge();
   setupPartyToggle();
+  await initAuth();
 
   const params = new URLSearchParams(location.search);
   const shareToken = params.get("share");
