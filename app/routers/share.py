@@ -61,9 +61,7 @@ def acknowledge_vault(share_token: str, session: Session = Depends(get_session))
 @router.get("/events", response_model=list[EventRead])
 def list_events(share_token: str, session: Session = Depends(get_session)):
     vault = _require_vault(share_token, session)
-    return session.exec(
-        select(VaultEvent).where(VaultEvent.vault_id == vault.id).order_by(VaultEvent.occurred_at)
-    ).all()
+    return events_with_documents(vault.id, session)
 
 
 @router.get("/flags", response_model=list[FlagRead])
