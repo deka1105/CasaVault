@@ -31,6 +31,38 @@ class ExtractionUnsupported(ValueError):
     """File type has no content-block mapping (e.g. .docx)."""
 
 
+class ExtractionRateLimited(RuntimeError):
+    """The provider refused for quota reasons (429).
+
+    Worth its own type because it is neither a bug nor a property of the
+    document: the upload succeeded and the file is stored, but no facts could
+    be read and no amount of retrying within the day will change that. The
+    caller surfaces this to the user verbatim — a document that silently
+    produced zero facts is indistinguishable from a document that genuinely
+    stated none, and during a demo that reads as a broken product.
+    """
+
+
+class ExtractionUpstreamError(RuntimeError):
+    """The provider could not be reached (503/timeout/connection)."""
+
+
+_RATE_LIMIT_MARKERS = ("429", "rate limit", "too_many_requests", "quota", "resource_exhausted")
+_TRANSIENT_MARKERS = ("503", "500", "service_unavailable", "unavailable", "high demand", "overloaded", "timeout", "timed out", "connection")
+
+
+def _classify(exc: Exception) -> Exception:
+    """Map a provider exception onto our own taxonomy. Matched on text, not
+    class: google-genai raises these from private _gaos.* modules whose import
+    paths are not a stable API."""
+    text = f"{getattr(exc, 'code', '')} {getattr(exc, 'status_code', '')} {exc}".lower()
+    if any(m in text for m in _RATE_LIMIT_MARKERS):
+        return ExtractionRateLimited(str(exc))
+    if any(m in text for m in _TRANSIENT_MARKERS):
+        return ExtractionUpstreamError(str(exc))
+    return exc
+
+
 def _content_block_for_file(path: Path) -> dict[str, Any]:
     ext = path.suffix.lower()
     if ext in _DOCUMENT_MIME_TYPES:
@@ -63,18 +95,21 @@ def extract_facts_from_file(path: Path) -> dict[str, Any]:
     content_block = _content_block_for_file(path)
 
     client = genai.Client(api_key=GEMINI_API_KEY)
-    interaction = client.interactions.create(
-        model=GEMINI_MODEL,
-        input=[
-            {"type": "text", "text": _EXTRACTION_PROMPT},
-            content_block,
-        ],
-        response_format={
-            "type": "text",
-            "mime_type": "application/json",
-            "schema": ExtractedFacts.model_json_schema(),
-        },
-    )
+    try:
+        interaction = client.interactions.create(
+            model=GEMINI_MODEL,
+            input=[
+                {"type": "text", "text": _EXTRACTION_PROMPT},
+                content_block,
+            ],
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": ExtractedFacts.model_json_schema(),
+            },
+        )
+    except Exception as exc:
+        raise _classify(exc) from exc
 
     facts = ExtractedFacts.model_validate_json(interaction.output_text)
     return facts.model_dump(exclude_none=True)
