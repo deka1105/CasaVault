@@ -10,7 +10,20 @@ agent answers questions over the vault + statute table, citing or refusing.
 Also done: share link, counterparty acknowledgement, evidence packet, RTC
 zip-check, document upload/download, front end. **Deployed and verified
 live at https://casavault.vercel.app** (Postgres + Blob persistence proven
-against the real deployment; see the Vercel deployment section). This is a
+against the real deployment; see the Vercel deployment section).
+
+**The front end was rebuilt and the back end hardened on Sep 25** — see the
+share-link, front-end, Gemini-client, failure-taxonomy and upload-cap
+sections below. Headline items: the "read-only" share link was not actually
+read-only (it returned the vault id, which is the write credential); the UI
+rendered server data through `innerHTML` (stored XSS reachable by the
+counterparty); every date displayed one day early west of UTC, including
+statutory deadlines; the grounded agent had **no UI at all** despite being
+the flagship feature; and `pytest -q` as documented did not run. All fixed,
+67 tests green. Still pending a human: an actual Clerk sign-in
+click-through (bug #3) and a real Philadelphia lease end to end.
+
+This is a
 hackathon build (LexHack 2026) with a hard submission deadline of **Sun Sep
 27, 2026, 5:00 PM EDT** — read `PLAN.md`'s build-order table before starting
 any work session to know what day/gate we're against.
