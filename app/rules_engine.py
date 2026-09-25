@@ -4,7 +4,12 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from app.condition_eval import UnsafeConditionError, evaluate_condition
+from app.condition_eval import (
+    UnsafeConditionError,
+    evaluate_condition,
+    evaluate_condition_tristate,
+    referenced_facts,
+)
 from app.models import Deadline, Flag, VaultEvent
 from app.statutes_loader import StatuteTable
 
@@ -128,3 +133,73 @@ def describe_deadline(deadline: Deadline, table: StatuteTable, party: str) -> st
     except (KeyError, IndexError):
         # An unexpected placeholder in the statute table must not 500 a read.
         return deadline.description
+
+
+def build_adjudication_report(
+    vault_id: str, session: Session, table: StatuteTable, party: str = "tenant"
+) -> dict[str, Any]:
+    """Everything the statute table has to say about this vault — not just
+    what went wrong.
+
+    A vault holding a fully compliant lease produces no flags, so the findings
+    panel rendered empty and read as "this product did nothing". It is in fact
+    a result, and for a small landlord it is *the* result: a record showing
+    the requirements were met. This reports three states per verified rule:
+
+      flagged   the condition fires — a finding, with its citation
+      passed    the condition is definitively false, every fact it depends on
+                is recorded, so the rule is affirmatively satisfied
+      unknown   a fact the rule depends on has never been recorded, so nothing
+                can honestly be said either way — carries `missing` and the
+                rule's `if_unknown` next step
+
+    "unknown" is the honest category and the useful one: `no_rental_license`
+    is the most common successful defense in Philadelphia landlord-tenant
+    court, and a lease never states it, so it lands here every time with a
+    prompt to go and check.
+    """
+    facts = aggregate_facts(vault_id, session)
+    flagged: list[dict[str, Any]] = []
+    passed: list[dict[str, Any]] = []
+    unknown: list[dict[str, Any]] = []
+
+    for rule in table.verified_rules:
+        condition = rule.get("condition")
+        if not condition:
+            continue  # clock rules are tracked as deadlines, not adjudicated here
+        try:
+            verdict = evaluate_condition_tristate(condition, facts)
+            needed = referenced_facts(condition)
+        except UnsafeConditionError:
+            logger.exception("bad condition in statutes.yaml for rule %s", rule.get("id"))
+            continue
+
+        entry = {
+            "statute_id": rule["id"],
+            "citation": rule["citation"],
+            "severity": rule.get("severity"),
+            "message": (rule.get("party_framing") or {}).get(party),
+            "detail": rule.get("detail"),
+        }
+
+        if verdict is True:
+            flagged.append(entry)
+        elif verdict is False:
+            passed.append(entry)
+        else:
+            entry["missing"] = sorted(n for n in needed if facts.get(n) is None)
+            entry["next_step"] = rule.get("if_unknown")
+            unknown.append(entry)
+
+    return {
+        "party": party,
+        "counts": {
+            "checked": len(flagged) + len(passed) + len(unknown),
+            "flagged": len(flagged),
+            "passed": len(passed),
+            "unknown": len(unknown),
+        },
+        "flagged": flagged,
+        "passed": passed,
+        "unknown": unknown,
+    }
