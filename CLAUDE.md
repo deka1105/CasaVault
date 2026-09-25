@@ -409,6 +409,133 @@ limit was a promise the deployment could not keep: anything between 4.5MB and
 limit before uploading so the user gets told immediately. Overridable via the
 `MAX_UPLOAD_BYTES` env var for a self-hosted run with no such edge limit.
 
+## What a real lease actually is (and what it forced)
+
+Verified against an actual Philadelphia lease for a professionally-managed
+building: **25 PDFs, 102 pages, 8.8MB**, a DocuSign envelope of NAA standard
+forms. Three things follow, and all three broke assumptions the build had
+been making:
+
+1. **The filled values are invisible to text extraction.** `pypdf` reads the
+   lease's section 4 as `"The total security deposit for all residents is $ ,
+   due on or before..."` — blank. Rendered, it says **$500.00**, and the next
+   line names the escrow bank. DocuSign flattens field values into drawing
+   operations, not form fields (the PDF has exactly one AcroForm entry, the
+   signature). So extraction MUST go through Gemini's visual document path.
+   Any future "just pull the text locally and save quota" optimization would
+   silently produce a lease with no deposit and no bank — **do not do it.**
+2. **25 files would be 25 model requests** against a 20/day quota, 25 timeline
+   rows, and 25 date pickers. See the triage and batch-upload sections below.
+3. **A compliant lease produces no flags at all.** This one is compliant:
+   $500 deposit on $2,432 rent is 0.21 months against a 2-month cap, the
+   escrow bank is disclosed, and the Philadelphia acknowledgment form confirms
+   the Certificate of Rental Suitability and Partners in Good Housing handbook
+   were both provided. The findings panel rendered empty, which reads as "this
+   product did nothing" rather than as the genuinely useful result. That drove
+   the three-state adjudication below.
+
+Two further findings from that lease worth keeping:
+
+- **Its zip is 19123, which is NOT in `right_to_counsel.covered_zips`.** So a
+  real tenant demo shows the PhillyTenant.org fallback, not the hotline. That
+  is on-message (PLAN.md's named population is renters *outside* RTC zips) but
+  don't expect the hotline path on camera.
+- **The master addendum contains "Resident Waives Right to Withhold Rent."**
+  The most legally interesting clause in the whole bundle maps to
+  `habitability_waiver`, which is `status: draft` with `PIN CITE NEEDED` and
+  therefore cannot render. That is a concrete argument for pinning the cite.
+
+## Three-state adjudication (`rules_engine.build_adjudication_report`)
+
+`/flags` only ever said what went wrong. `GET /api/vaults/{id}/adjudication`
+(and the share equivalent) reports every verified condition rule as one of:
+
+- **flagged** — the condition fires; carries `party_framing` and the citation
+- **passed** — definitively false with every fact it depends on recorded
+- **unknown** — a fact it depends on was never recorded, so nothing honest can
+  be said; carries `missing` and the rule's `if_unknown` next step
+
+Built on `condition_eval.evaluate_condition_tristate`, which is Kleene logic
+(True / False / None) rather than boolean. That distinction is the whole
+point: a missing fact and a satisfied rule both came out `False` before, so
+"your deposit is within the cap" and "we have no idea what your deposit is"
+were indistinguishable. Short-circuiting still resolves what it can —
+`deposit_held_months > 1 AND tenancy_year >= 2` against a first-year tenancy
+is definitively False even though `deposit_held_months` is unknown, so it
+correctly reads as "does not apply" rather than "unknown".
+
+`evaluate_condition` is now a thin wrapper returning `tristate(...) is True`,
+so missing data still never reads as a violation. Keep that property.
+
+Two rules about presentation, both load-bearing:
+
+- **Never print `party_framing` on a rule that passed.** It is phrased as an
+  assertion that the violation happened ("Your landlord is holding more
+  deposit than Pennsylvania allows"), so on a satisfied rule it states the
+  opposite of the truth. Passed and unknown rules render `requirement`, a
+  neutral statement of what the law asks for.
+- **The UI says "no issue found", not "compliant".** A rule can be
+  definitively false because it does not apply yet (the year-two deposit cap
+  during year one). The product must not assert compliance it cannot prove.
+
+`deposit_escrow_required` was also wrong and is now a two-part test:
+`deposit_amount > 100 AND deposit_bank_disclosed == false`. Firing on the
+amount alone made the rule impossible to satisfy — the real lease named its
+escrow bank on page 1 and was still flagged. That needed a new
+`deposit_bank_disclosed` fact in `ExtractedFacts` (facts is a JSON column, so
+no migration).
+
+## Document triage (`app/triage.py`)
+
+Not an optimization — without it a single real lease cannot be processed at
+all, because 25 files exceed the entire daily quota. Three categories:
+
+- **PRIORITY** (always read): the lease form, the Philadelphia acknowledgment,
+  inventory/condition, fees disclosure, rent concession, buy-out — and
+  anything matching `waiver|waives`, `master addendum` or `community
+  policies`, because statutes.yaml calls `deposit_waiver_void` the high-value
+  flag and the real lease buries its waiver in the master addendum.
+- **SECONDARY**: other addenda, read while a per-upload budget lasts,
+  **ranked by relevance** (`_SECONDARY_RELEVANCE`). Ranking matters: spending
+  the budget in file order meant reading the marijuana addendum and skipping
+  the master addendum.
+- **SKIP** (never read): city brochures and handbooks, which are identical for
+  every tenant in Philadelphia, plus the DocuSign certificate of completion —
+  which holds no lease terms at all, only names, email addresses and signer
+  IP addresses.
+
+Result on the real bundle: **25 files, 11 read**. A file uploaded on its own
+(no manifest) is always read — triage is a budget for bundles, and silently
+declining to read a deliberately chosen file would be a bug.
+
+## Multi-document uploads
+
+One lease signing is ONE event with many files. `VaultDocument` (a new table —
+`create_all` does create tables that don't exist, it only refuses to alter
+existing ones) hangs many files off one `VaultEvent`.
+
+`POST /api/vaults/{id}/documents` takes optional `event_id` (attach to an
+event a previous call created), `event_type`, and `manifest`/`index` — the
+whole batch's filename list plus this file's position, which is what lets
+triage decide across the batch while the endpoint stays stateless. Files still
+go one request each because **Vercel caps a function request body at 4.5MB**,
+so an 8.8MB bundle cannot arrive together.
+
+Facts from later files merge into the same event (`{**event.facts, **facts}`):
+the deposit comes from the lease form, the certificate acknowledgement from a
+different PDF, and the rules engine needs both on one tenancy.
+
+`build_document_response` resolves a `VaultDocument` id first and falls back to
+treating the id as a `VaultEvent` id, so links in evidence packets printed
+before this existed still resolve.
+
+**The share surface must never print the vault id.** `render_evidence_packet`
+used to fall back to `vault.label or vault.id`, so an *unlabelled* vault
+leaked the write credential into the packet handed to the counterparty. It now
+takes an explicit `vault_name`; the share route passes "Untitled vault". Found
+by a test that only failed because its vault happened to have no label — the
+earlier share tests all used labelled vaults and passed straight over it.
+
 ## Rules engine (`app/rules_engine.py`, `app/condition_eval.py`)
 
 - `aggregate_facts` merges every `VaultEvent.facts` dict for a vault into one
