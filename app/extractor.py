@@ -1,9 +1,8 @@
 from pathlib import Path
 from typing import Any
 
-from google import genai
-
 from app.config import GEMINI_API_KEY, GEMINI_MODEL
+from app.gemini_client import build_client
 from app.extraction_schema import ExtractedFacts
 
 # google-genai's DocumentContent/ImageContent types only recognize these
@@ -100,7 +99,7 @@ def extract_facts_from_file(path: Path) -> dict[str, Any]:
 
     content_block = _content_block_for_file(path)
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = build_client()
     try:
         interaction = client.interactions.create(
             model=GEMINI_MODEL,

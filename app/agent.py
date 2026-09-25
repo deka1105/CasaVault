@@ -162,9 +162,10 @@ def _build_context(vault_id: str, session: Session, table: StatuteTable, party: 
 
 
 def _call_model(question: str, party: str, context: dict[str, Any]) -> GroundedAnswer:
-    from google import genai  # imported lazily so tests can patch config before this loads
+    # imported lazily so tests can patch config before the SDK loads
+    from app.gemini_client import build_client
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = build_client()
     interaction = client.interactions.create(
         model=GEMINI_MODEL,
         input=[
