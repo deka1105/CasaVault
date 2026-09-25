@@ -292,6 +292,16 @@
               <input id="incident-name" type="text" placeholder="e.g. A. Resident" autocomplete="name">
             </label>
           </div>
+          <div id="incident-insurance-row" class="field-row-group" style="align-items: end;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; cursor: pointer; padding-bottom: 0.35rem;">
+              <input id="incident-cc-insurance" type="checkbox">
+              <span>Also notify my insurance</span>
+            </label>
+            <label class="field" id="incident-insurance-field" hidden>
+              <span>Insurance email</span>
+              <input id="incident-insurance-email" type="email" placeholder="claims@insurer.com" autocomplete="email">
+            </label>
+          </div>
           <div class="field-row-group" style="gap: 1.5rem; margin: 0.6rem 0;">
             <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; cursor: pointer;">
               <input id="incident-essential" type="checkbox">
@@ -348,6 +358,7 @@
               <select id="event-type">
                 <option value="document_upload">Document upload</option>
                 <option value="lease_signed">Lease signed</option>
+                <option value="insurance_upload">Insurance document</option>
                 <option value="move_in">Move in</option>
                 <option value="repair_requested">Repair requested</option>
                 <option value="notice_received">Notice received</option>
