@@ -15,8 +15,11 @@ def _now() -> datetime:
 
 
 class Vault(SQLModel, table=True):
-    """One vault per tenancy. No auth — the id and share_token are the
-    access control (PLAN.md: 'Single vault, no signup')."""
+    """One vault per tenancy. The id and share_token remain the actual
+    access control (PLAN.md: 'Single vault, no signup') — owner_user_id is
+    purely additive, for a signed-in creator to find their own vaults later
+    via GET /api/vaults/mine. It does not gate access to the vault itself;
+    anonymous id/share-token access is unchanged whether or not this is set."""
 
     id: str = Field(default_factory=_uuid, primary_key=True)
     label: Optional[str] = None
@@ -24,6 +27,7 @@ class Vault(SQLModel, table=True):
     share_token: str = Field(default_factory=_uuid, index=True, unique=True)
     created_at: datetime = Field(default_factory=_now)
     acknowledged_at: Optional[datetime] = None
+    owner_user_id: Optional[str] = Field(default=None, index=True)
 
 
 class VaultEvent(SQLModel, table=True):
