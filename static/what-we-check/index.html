@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>What we check — CasaVault</title>
+  <meta name="description" content="The full list of Philadelphia and Pennsylvania rental rules CasaVault checks your documents against, in plain English, each with its legal citation.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A0%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14141a" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="brand-mark">CasaVault</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/">Home</a>
+      <a href="/how-it-works/">How it works</a>
+      <a href="/what-we-check/" aria-current="page">What we check</a>
+      <a href="/about/">About &amp; limits</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-secondary btn-small" href="/#start">Start</a>
+    </div>
+  </header>
+
+  <main class="page page-wide">
+    <p class="eyebrow">What we check</p>
+    <h1>The rules we check your documents against.</h1>
+    <p class="intro">
+      This is the whole list — loaded from the live site as you read it, so it's exactly what
+      your records are checked against. Every answer CasaVault gives you traces back to one
+      of these.
+    </p>
+
+    <div class="callout callout-plain">
+      <p>
+        We only use rules we've checked against the law itself or against a legal-aid or City
+        source. If we're not yet certain of a rule's exact citation, it stays switched off and
+        never appears in your results — even when it would have matched.
+      </p>
+    </div>
+
+    <h2>Your security deposit <span id="rule-count" class="hint" style="font-weight:400"></span></h2>
+    <p>Pennsylvania caps how much a landlord can hold, and sets what happens when you move out.</p>
+    <ul id="rules-deposit" class="statute-list"></ul>
+
+    <h2>Philadelphia licensing</h2>
+    <p>
+      These are the rules most renters have never heard of, and they carry real weight: a
+      landlord who hasn't met them can be barred from collecting rent or evicting you for that
+      period.
+    </p>
+    <ul id="rules-philly" class="statute-list"></ul>
+
+    <h2>Free legal help</h2>
+    <p>
+      Philadelphia's Right to Counsel programme gives some renters a free lawyer in eviction
+      court, but only in certain zip codes. That's why we ask for yours when you start. If
+      you're covered, we point you at the Philly Tenant Hotline on
+      <strong>(267) 443-2500</strong>. If you're not, we point you at
+      <a href="https://phillytenant.org" target="_blank" rel="noopener">PhillyTenant.org</a>,
+      because most renters fall outside the programme.
+    </p>
+
+    <h2>Where these come from</h2>
+    <p>Each rule above was checked against a primary source. The main ones:</p>
+    <ul>
+      <li>Pennsylvania's Landlord and Tenant Act of 1951 — the deposit rules (68 P.S. § 250.511a, § 250.511b, § 250.512)</li>
+      <li>The Philadelphia Code — rental licences and the Certificate of Rental Suitability (§ 9-3902, § 9-3903, § 9-3901)</li>
+      <li>Community Legal Services of Philadelphia, on security deposits</li>
+      <li>The Philadelphia Fair Housing Commission, on rental suitability</li>
+      <li>Philly VIP's landlord–tenant defences checklist</li>
+    </ul>
+
+    <p id="rules-error" class="error" hidden></p>
+
+    <div class="next-page">
+      <a class="btn btn-secondary" href="/about/">What this tool can't do</a>
+      <a class="btn btn-primary" href="/#start">Start your record</a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Footer">
+        <a href="/">Home</a>
+        <a href="/how-it-works/">How it works</a>
+        <a href="/what-we-check/">What we check</a>
+        <a href="/about/">About &amp; limits</a>
+      </nav>
+      <p>
+        CasaVault gives information about your rights. It is not legal advice, and using it
+        does not make us your lawyer. For advice about your own situation, call the Philly
+        Tenant Hotline on (267) 443-2500 or visit PhillyTenant.org.
+      </p>
+    </div>
+  </footer>
+
+  <script src="/rules.js"></script>
+</body>
+</html>
