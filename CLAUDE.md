@@ -177,11 +177,35 @@ start or redeploy. Fixed by making both swappable, not by rearchitecting:
     Forbidden: You don't have permission to create the blob` consistently —
     this needs to be done from the dashboard, not automatable from here even
     with team access confirmed elsewhere.
-  - Still needed: connect the git repo, a real deploy, and the same
-    live-scenario smoke test already run locally (upload the sample notice,
-    confirm the 4 flags, ask the deposit-return question) run again against
-    the deployed preview URL. Full plan/sequencing:
-    `~/.claude/plans/jaunty-sniffing-ullman.md`.
+  - ✅ **Deployed and live at https://casavault.vercel.app** — git repo
+    connected (Vercel's GitHub App on `deka1105/CasaVault`, production
+    branch `master`), deployed, and end-to-end verified against the real
+    production URL: vault create/read (Postgres), document upload/download
+    (Blob, `source_document_ref` correctly shows the `blob:` prefix, content
+    byte-identical on download).
+  - **Real bug caught only by testing the actual deployment, not local dev**:
+    `UPLOADS_DIR` defaulted to a path under the deployed code directory
+    (`/var/task`), which is **read-only** on Vercel —
+    `OSError: [Errno 30] Read-only file system`. Local dev never hits this
+    because the local filesystem is writable everywhere. Fixed by setting
+    `UPLOADS_DIR=/tmp/casavault-uploads` as a project env var (Vercel's
+    writable per-invocation scratch space) — `app/storage.py` itself needed
+    no code change, since this was purely a missing env var, not a logic
+    bug. **If a future deploy throws this same read-only error, check this
+    env var is still set before assuming the code regressed.**
+  - Note on promotion: redeploying the *same* commit (e.g. after only an
+    env var change, no new code) does not automatically move to `target:
+    production` / the `casavault.vercel.app` alias — `request_promote`
+    also didn't work here (`422`). What worked: `create_deployment` with an
+    explicit `deploymentId` (redeploy of the built one) and `target:
+    "production"`.
+  - LLM extraction/agent were **not** re-tested against this live
+    deployment — `GEMINI_API_KEY` was never added to the Vercel project
+    (deliberately, to conserve the free-tier daily quota already mostly
+    used locally). Add it as a project env var and redeploy to enable.
+    Storage/persistence — the actual subject of this fix — is fully proven;
+    extraction/agent logic itself was already proven separately, against
+    the real Gemini API, earlier this session.
 
 ## Front end (`static/`)
 
