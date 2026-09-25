@@ -61,11 +61,11 @@ def get_or_create_property(address: str, session: Session, zip_code: Optional[st
             session.refresh(existing)
         return existing
 
-    prop = Property(
-        address_normalized=normalized,
-        address_display=(address or "").strip() or normalized,
-        zip_code=zip_code,
-    )
+    # Display keeps the user's own capitalisation but drops the city/state/zip
+    # tail, so "4047 Spring Garden Street, Philadelphia, PA" reads back as
+    # "4047 Spring Garden Street" and a unit can be appended cleanly.
+    display = (address or "").split(",")[0].strip() or normalized
+    prop = Property(address_normalized=normalized, address_display=display, zip_code=zip_code)
     session.add(prop)
     session.commit()
     session.refresh(prop)
