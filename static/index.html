@@ -227,6 +227,102 @@
         <div id="ask-answer" hidden></div>
       </section>
 
+      <section id="city-record-section" class="card" hidden>
+        <div class="section-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <h2 style="margin: 0;">City records</h2>
+            <p class="hint">Rental licence status and code violations from Philadelphia L&amp;I</p>
+          </div>
+          <button id="pull-city-btn" class="btn btn-secondary btn-small" type="button">Pull City records</button>
+        </div>
+        <div id="city-record-result" hidden></div>
+        <p id="city-record-error" class="error" hidden></p>
+      </section>
+
+      <section id="incident-section" class="card" hidden>
+        <div class="section-head">
+          <h2>Report a problem</h2>
+          <p class="hint">Drafts a written notice for you to send from your own email — we never send it</p>
+        </div>
+        <form id="incident-form">
+          <div class="field-row-group">
+            <label class="field">
+              <span>What's the problem?</span>
+              <select id="incident-category" required>
+                <option value="heat">No heat</option>
+                <option value="hot_water">No hot water</option>
+                <option value="water_leak">Water leak</option>
+                <option value="electrical">Electrical problem</option>
+                <option value="pest">Pests</option>
+                <option value="mold">Damp or mould</option>
+                <option value="security">Door, lock or security</option>
+                <option value="appliance">Appliance not working</option>
+                <option value="structural">Structural problem</option>
+                <option value="other">Something else</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>How urgent?</span>
+              <select id="incident-urgency" required>
+                <option value="emergency">Emergency</option>
+                <option value="urgent">Urgent</option>
+                <option value="routine">Routine</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Date</span>
+              <input id="incident-date" type="date" required>
+            </label>
+          </div>
+          <label class="field field-grow">
+            <span>Short description</span>
+            <input id="incident-summary" type="text" placeholder="e.g. No heat since Tuesday" required autocomplete="off">
+          </label>
+          <label class="field field-grow">
+            <span>More detail (optional)</span>
+            <textarea id="incident-detail" rows="2" placeholder="When it started, what you've tried, anything else the office should know"></textarea>
+          </label>
+          <div class="field-row-group">
+            <label class="field">
+              <span>Management email</span>
+              <input id="incident-email" type="email" placeholder="office@example.com" autocomplete="email">
+            </label>
+            <label class="field">
+              <span>Your name (for the letter)</span>
+              <input id="incident-name" type="text" placeholder="e.g. A. Resident" autocomplete="name">
+            </label>
+          </div>
+          <div class="field-row-group" style="gap: 1.5rem; margin: 0.6rem 0;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; cursor: pointer;">
+              <input id="incident-essential" type="checkbox">
+              <span>Affects heat, water, electricity or security</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; cursor: pointer;">
+              <input id="incident-repeat" type="checkbox">
+              <span>I've reported this before</span>
+            </label>
+          </div>
+          <div class="actions" style="margin-top: 0.9rem;">
+            <button id="incident-submit" type="submit" class="btn btn-primary">Draft the notice</button>
+          </div>
+        </form>
+        <div id="incident-draft" hidden></div>
+        <p id="incident-error" class="error" hidden></p>
+      </section>
+
+      <section id="incident-list-section" class="card" hidden>
+        <div class="section-head">
+          <h2>Reported problems</h2>
+          <p class="hint">Written notices you've drafted from this record</p>
+        </div>
+        <div class="table-wrap">
+          <table id="incidents-table">
+            <thead><tr><th class="num">Date</th><th>Issue</th><th>Urgency</th><th>Status</th><th>Ref</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="card">
         <div class="section-head">
           <h2>Timeline</h2>
