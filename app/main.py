@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import CLERK_PUBLISHABLE_KEY, STATIC_DIR, STATUTES_PATH
 from app.database import init_db
-from app.routers import agent, documents, events, evidence, properties, share, vault
+from app.routers import agent, documents, events, evidence, incidents, properties, share, vault
 from app.statutes_loader import load_statute_table
 
 
@@ -21,6 +21,7 @@ app = FastAPI(title="CasaVault", lifespan=lifespan)
 app.include_router(vault.router)
 app.include_router(share.router)
 app.include_router(properties.router)
+app.include_router(incidents.router)
 app.include_router(events.router)
 app.include_router(agent.router)
 app.include_router(evidence.router)
