@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
 
+from app.auth import get_optional_user_id, require_user_id
 from app.database import get_session
 from app.models import Vault
 from app.rtc import handoff_for_zip
@@ -19,12 +21,30 @@ def _get_by_share_token(share_token: str, session: Session) -> Vault:
 
 
 @router.post("", response_model=VaultRead)
-def create_vault(payload: VaultCreate, session: Session = Depends(get_session)):
-    vault = Vault(label=payload.label, zip_code=payload.zip_code)
+def create_vault(
+    payload: VaultCreate,
+    session: Session = Depends(get_session),
+    owner_user_id: Optional[str] = Depends(get_optional_user_id),
+):
+    """Anonymous by default (PLAN.md: 'no signup'). If the caller is signed
+    in (Clerk), the vault is additionally tagged with owner_user_id so they
+    can find it later via GET /mine — this never restricts anonymous access
+    to the vault's own id/share_token, it's purely additive."""
+    vault = Vault(label=payload.label, zip_code=payload.zip_code, owner_user_id=owner_user_id)
     session.add(vault)
     session.commit()
     session.refresh(vault)
     return vault
+
+
+@router.get("/mine", response_model=list[VaultRead])
+def list_my_vaults(session: Session = Depends(get_session), user_id: str = Depends(require_user_id)):
+    """Requires sign-in (401 otherwise) — lists vaults created while signed
+    in as this user. Registered before /{vault_id} so 'mine' is never
+    mistaken for a vault id."""
+    return session.exec(
+        select(Vault).where(Vault.owner_user_id == user_id).order_by(Vault.created_at.desc())
+    ).all()
 
 
 @router.get("/{vault_id}", response_model=VaultRead)
