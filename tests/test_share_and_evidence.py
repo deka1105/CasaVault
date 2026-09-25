@@ -147,3 +147,48 @@ def test_evidence_packet_404_for_unknown_vault():
     with TestClient(app) as client:
         res = client.get("/api/vaults/does-not-exist/evidence")
     assert res.status_code == 404
+
+
+def test_deadlines_are_framed_for_the_asking_party():
+    """A landlord reading their own vault used to see "Your landlord has
+    until ..." about themselves: the description is baked from the tenant
+    framing at creation time, so it has to be re-rendered per party the same
+    way flags already were."""
+    with TestClient(app) as client:
+        vault = _make_vault(client, label="Clock framing")
+        client.post(
+            f"/api/vaults/{vault['id']}/events",
+            json={
+                "event_type": "move_out",
+                "occurred_at": "2026-08-01",
+                "facts": {"forwarding_address_provided": True},
+            },
+        )
+        tenant = client.get(f"/api/vaults/{vault['id']}/deadlines?party=tenant").json()
+        landlord = client.get(f"/api/vaults/{vault['id']}/deadlines?party=landlord").json()
+        shared = client.get(
+            f"/api/vaults/by-share-token/{vault['share_token']}/deadlines?party=landlord"
+        ).json()
+
+    assert tenant[0]["description"].startswith("Your landlord has until 2026-08-31")
+    assert landlord[0]["description"] == "You must return the deposit or send an itemized list by 2026-08-31."
+    assert shared[0]["description"] == landlord[0]["description"]
+    # The underlying dates must be identical whichever side is reading.
+    assert tenant[0]["due_date"] == landlord[0]["due_date"] == "2026-08-31"
+
+
+def test_evidence_packet_frames_deadlines_for_the_party_too():
+    with TestClient(app) as client:
+        vault = _make_vault(client, label="Packet clock framing")
+        client.post(
+            f"/api/vaults/{vault['id']}/events",
+            json={
+                "event_type": "move_out",
+                "occurred_at": "2026-08-01",
+                "facts": {"forwarding_address_provided": True},
+            },
+        )
+        landlord = client.get(f"/api/vaults/{vault['id']}/evidence?party=landlord").text
+
+    assert "You must return the deposit or send an itemized list by 2026-08-31." in landlord
+    assert "Your landlord has until" not in landlord

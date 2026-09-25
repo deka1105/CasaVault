@@ -32,31 +32,43 @@ class AgentUpstreamError(RuntimeError):
     """
 
 
-# Substrings that mark a provider-side failure worth retrying, matched against
-# the exception text rather than a class: google-genai raises these from
-# private _gaos.* modules whose paths are not a stable API to import against.
+class AgentRateLimited(AgentUpstreamError):
+    """The provider refused on quota (429).
+
+    Split from the retryable case deliberately: the configured key's limit is
+    a DAILY one (20 requests on the free tier), so retrying cannot clear it —
+    it just burns ~2 minutes per attempt, since the SDK does its own internal
+    backoff before surfacing the 429. Fail fast and say what happened.
+    """
+
+
+# Matched against exception text rather than class: google-genai raises these
+# from private _gaos.* modules whose import paths are not a stable API.
+_RATE_LIMIT_MARKERS = ("429", "rate limit", "ratelimit", "too_many_requests", "quota", "resource_exhausted")
 _TRANSIENT_MARKERS = (
     "503",
-    "429",
     "500",
     "service_unavailable",
     "unavailable",
     "high demand",
-    "rate limit",
-    "ratelimit",
-    "resource_exhausted",
-    "quota",
     "overloaded",
     "timeout",
     "timed out",
-    "deadline",
+    "deadline exceeded",
     "connection",
 )
 
 
+def _error_text(exc: Exception) -> str:
+    return f"{getattr(exc, 'code', '')} {getattr(exc, 'status_code', '')} {exc}".lower()
+
+
+def _is_rate_limit(exc: Exception) -> bool:
+    return any(marker in _error_text(exc) for marker in _RATE_LIMIT_MARKERS)
+
+
 def _looks_transient(exc: Exception) -> bool:
-    text = f"{getattr(exc, 'code', '')} {getattr(exc, 'status_code', '')} {exc}".lower()
-    return any(marker in text for marker in _TRANSIENT_MARKERS)
+    return any(marker in _error_text(exc) for marker in _TRANSIENT_MARKERS)
 
 
 class GroundedAnswer(BaseModel):
@@ -181,6 +193,9 @@ def _call_model_with_retry(
         try:
             return _call_model(question, party, context)
         except Exception as exc:
+            if _is_rate_limit(exc):
+                logger.warning("agent hit the provider quota: %s", exc)
+                raise AgentRateLimited(str(exc)) from exc
             if not _looks_transient(exc):
                 raise
             if attempt == attempts - 1:

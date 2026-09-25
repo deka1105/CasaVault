@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session
 
-from app.agent import AgentUnavailable, AgentUpstreamError, ask_agent
+from app.agent import AgentRateLimited, AgentUnavailable, AgentUpstreamError, ask_agent
 from app.database import get_session
 from app.models import Vault
 from app.rtc import handoff_for_zip
@@ -37,6 +37,17 @@ def ask(vault_id: str, payload: AskRequest, request: Request, session: Session =
             refusal=(
                 "The grounded agent isn't configured on this deployment, so I can't "
                 "answer from your vault or the statute table. I won't guess."
+            ),
+            handoff=handoff,
+            unavailable=True,
+        )
+    except AgentRateLimited:
+        logger.warning("agent quota exhausted for vault %s", vault_id)
+        return AskResponse(
+            refusal=(
+                "The daily limit for asking questions has been reached on this "
+                "deployment, so I have no grounded answer to give you right now. "
+                "Your record and its findings are unaffected."
             ),
             handoff=handoff,
             unavailable=True,
