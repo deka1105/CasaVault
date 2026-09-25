@@ -104,3 +104,27 @@ def compute_deadlines_for_event(event: VaultEvent, session: Session, table: Stat
         for deadline in new_deadlines:
             session.refresh(deadline)
     return new_deadlines
+
+
+def describe_deadline(deadline: Deadline, table: StatuteTable, party: str) -> str:
+    """The deadline's stored `description` is baked at creation time from the
+    tenant framing, so a landlord reading their own vault saw "Your landlord
+    has until ..." about themselves. Flags already re-frame per party; this
+    does the same for clocks, at render time, so no second copy of the text
+    has to be persisted (and no new column has to be migrated onto the live
+    database — see the SQLModel note in CLAUDE.md).
+
+    Falls back to the stored description whenever the rule or its framing is
+    missing, so a deadline never renders blank.
+    """
+    rule = table.get_rule(deadline.statute_id)
+    if not rule or rule.get("status") != "verified":
+        return deadline.description
+    framing = (rule.get("party_framing") or {}).get(party)
+    if not framing:
+        return deadline.description
+    try:
+        return framing.format(deadline=deadline.due_date.isoformat())
+    except (KeyError, IndexError):
+        # An unexpected placeholder in the statute table must not 500 a read.
+        return deadline.description

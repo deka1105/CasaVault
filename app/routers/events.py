@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, select
 
 from app.database import get_session
 from app.models import Deadline, Flag, Vault, VaultEvent
-from app.rules_engine import adjudicate_vault, compute_deadlines_for_event
-from app.schemas import DeadlineRead, EventCreate, EventRead, FlagRead
+from app.rules_engine import adjudicate_vault, compute_deadlines_for_event, describe_deadline
+from app.schemas import DeadlineRead, EventCreate, EventRead, FlagRead, Party
 
 router = APIRouter(prefix="/api/vaults/{vault_id}", tags=["events"])
 
@@ -51,6 +51,24 @@ def list_flags(vault_id: str, session: Session = Depends(get_session)):
 
 
 @router.get("/deadlines", response_model=list[DeadlineRead])
-def list_deadlines(vault_id: str, session: Session = Depends(get_session)):
+def list_deadlines(
+    vault_id: str,
+    request: Request,
+    party: Party = Query("tenant"),
+    session: Session = Depends(get_session),
+):
+    """One rule, two framings — for clocks as well as flags."""
     _require_vault(vault_id, session)
-    return session.exec(select(Deadline).where(Deadline.vault_id == vault_id)).all()
+    table = request.app.state.statutes
+    deadlines = session.exec(select(Deadline).where(Deadline.vault_id == vault_id)).all()
+    return [
+        DeadlineRead(
+            id=d.id,
+            statute_id=d.statute_id,
+            due_date=d.due_date,
+            description=describe_deadline(d, table, party),
+            resolved=d.resolved,
+            created_at=d.created_at,
+        )
+        for d in deadlines
+    ]

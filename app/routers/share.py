@@ -24,6 +24,7 @@ from app.database import get_session
 from app.evidence import render_evidence_packet
 from app.models import Deadline, Flag, Vault, VaultEvent
 from app.routers.documents import build_document_response
+from app.rules_engine import describe_deadline
 from app.rtc import handoff_for_zip
 from app.schemas import DeadlineRead, EventRead, FlagRead, Party, VaultShareRead
 
@@ -72,9 +73,26 @@ def list_flags(share_token: str, session: Session = Depends(get_session)):
 
 
 @router.get("/deadlines", response_model=list[DeadlineRead])
-def list_deadlines(share_token: str, session: Session = Depends(get_session)):
+def list_deadlines(
+    share_token: str,
+    request: Request,
+    party: Party = Query("landlord"),
+    session: Session = Depends(get_session),
+):
     vault = _require_vault(share_token, session)
-    return session.exec(select(Deadline).where(Deadline.vault_id == vault.id)).all()
+    table = request.app.state.statutes
+    deadlines = session.exec(select(Deadline).where(Deadline.vault_id == vault.id)).all()
+    return [
+        DeadlineRead(
+            id=d.id,
+            statute_id=d.statute_id,
+            due_date=d.due_date,
+            description=describe_deadline(d, table, party),
+            resolved=d.resolved,
+            created_at=d.created_at,
+        )
+        for d in deadlines
+    ]
 
 
 @router.get("/rtc-check")

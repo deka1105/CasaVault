@@ -17,6 +17,7 @@ def render_evidence_packet(
     deadlines: list[Deadline],
     party: str = "tenant",
     document_base: str | None = None,
+    deadline_descriptions: dict[int, str] | None = None,
 ) -> str:
     """Renders a single, self-contained, print-to-PDF-friendly HTML page —
     chronological events, then flags with citations, then open deadlines.
@@ -30,6 +31,7 @@ def render_evidence_packet(
     # message_tenant, so a landlord printing their own vault's evidence got
     # the tenant's side of every finding.
     document_base = document_base or f"/api/vaults/{vault.id}/documents"
+    descriptions = deadline_descriptions or {}
 
     event_rows = "\n".join(
         f"<tr><td>{_esc(e.occurred_at)}</td><td>{_esc(e.event_type)}</td>"
@@ -46,7 +48,7 @@ def render_evidence_packet(
     ) or "<tr><td colspan='3'><em>No flags.</em></td></tr>"
 
     deadline_rows = "\n".join(
-        f"<tr><td>{_esc(d.due_date)}</td><td>{_esc(d.description)}</td>"
+        f"<tr><td>{_esc(d.due_date)}</td><td>{_esc(descriptions.get(d.id, d.description))}</td>"
         f"<td>{'resolved' if d.resolved else 'open'}</td></tr>"
         for d in deadlines
     ) or "<tr><td colspan='3'><em>No deadlines tracked.</em></td></tr>"
