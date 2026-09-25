@@ -10,6 +10,11 @@ Party = Literal["tenant", "landlord"]
 class VaultCreate(BaseModel):
     label: Optional[str] = None
     zip_code: Optional[str] = None
+    # The address the record belongs to. Optional so existing callers and
+    # tests keep working, but it is the intended entry point: the record
+    # attaches to the property, not to whoever happens to hold it now.
+    address: Optional[str] = None
+    unit: Optional[str] = None
 
     @field_validator("zip_code")
     @classmethod
@@ -36,6 +41,8 @@ class VaultRead(BaseModel):
     created_at: datetime
     acknowledged_at: Optional[datetime]
     owner_user_id: Optional[str] = None
+    address: Optional[str] = None
+    address_normalized: Optional[str] = None
 
 
 class VaultShareRead(BaseModel):
