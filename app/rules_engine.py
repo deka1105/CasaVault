@@ -178,11 +178,15 @@ def build_adjudication_report(
             "statute_id": rule["id"],
             "citation": rule["citation"],
             "severity": rule.get("severity"),
-            "message": (rule.get("party_framing") or {}).get(party),
+            "requirement": rule.get("requirement"),
             "detail": rule.get("detail"),
         }
 
         if verdict is True:
+            # Only a rule that actually fired gets the party_framing, which is
+            # phrased as an assertion that the violation happened. Printing
+            # that on a satisfied rule states the opposite of the truth.
+            entry["message"] = (rule.get("party_framing") or {}).get(party)
             flagged.append(entry)
         elif verdict is False:
             passed.append(entry)

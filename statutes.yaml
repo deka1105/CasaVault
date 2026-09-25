@@ -17,6 +17,7 @@ rules:
   # =========================================================================
 
   - id: deposit_cap_year_one
+    requirement: "In year one, the security deposit may not exceed two months' rent."
     status: verified
     applies_to: security_deposit
     party_framing:
@@ -29,6 +30,7 @@ rules:
     detail: "During the first year of a lease the deposit may not exceed two months' rent. Pet deposits count toward the same cap."
 
   - id: deposit_cap_year_two_plus
+    requirement: "From year two, no more than one month's rent may be held as a deposit."
     status: verified
     applies_to: security_deposit
     party_framing:
@@ -41,6 +43,7 @@ rules:
     detail: "The reduction is mandatory at the start of year two. The excess must be returned to the tenant."
 
   - id: deposit_freeze_five_years
+    requirement: "After five years of possession, a rent increase does not permit a deposit increase."
     status: verified
     applies_to: security_deposit
     party_framing:
@@ -53,6 +56,7 @@ rules:
     detail: "After five years of possession, a rent increase does not permit an increase in the security deposit."
 
   - id: deposit_waiver_void
+    requirement: "A lease term waiving the deposit protections of this section has no effect."
     status: verified
     applies_to: [security_deposit, waiver_of_tenant_rights]
     party_framing:
@@ -66,6 +70,7 @@ rules:
     note: "HIGH VALUE FLAG — a lease clause that is void on its face, detectable by extraction alone."
 
   - id: deposit_escrow_required
+    requirement: "A deposit over $100 must be held in escrow at a regulated bank, with the bank's name and address disclosed in writing."
     status: verified
     applies_to: security_deposit
     party_framing:
@@ -102,6 +107,7 @@ rules:
   # court and almost no consumer tool surfaces it.
 
   - id: no_rental_license
+    requirement: "The owner must hold a current Philadelphia rental license to collect rent or recover possession."
     status: verified
     applies_to: [lease, "event:notice_received"]
     party_framing:
@@ -114,6 +120,7 @@ rules:
     detail: "An owner who fails to obtain a rental license is denied the right to recover possession or to collect rent during the period of noncompliance. In any eviction or rent-collection action the owner must attach a copy of the license."
 
   - id: no_certificate_of_rental_suitability
+    requirement: "A Certificate of Rental Suitability and the Partners in Good Housing handbook must be given at signing."
     status: verified
     applies_to: lease
     party_framing:
@@ -127,6 +134,7 @@ rules:
     vault_action: "Prompt the tenant at move-in to record whether they received these. This is the single most valuable record in the vault."
 
   - id: open_violations_over_30_days
+    requirement: "L&I violations must not remain open more than 30 days."
     status: verified
     applies_to: lease
     party_framing:
