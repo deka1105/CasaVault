@@ -547,42 +547,50 @@ takes an explicit `vault_name`; the share route passes "Untitled vault". Found
 by a test that only failed because its vault happened to have no label — the
 earlier share tests all used labelled vaults and passed straight over it.
 
-## Landing page (`static/index.html`, `#landing`)
+## Site structure and the landing page (`static/`)
 
-The first thing any visitor sees, and the surface a judge hits first — 20% of
-the rubric is UX and 15% presentation. Same single page, no build step and no
-routing change: `#landing` and `#vault-view` are siblings, and `app.js` shows
-one or the other off the `?vault=` / `?share=` query params exactly as before.
+Four pages, plain HTML, still no build step:
 
-Structure: hero with a live-looking output preview → the problem, in numbers →
-the four stages → a capability grid → the agent's answer/refusal examples →
-the **live** statute table → create-a-vault → what it does *not* do → footer.
+| URL | File | What it is |
+|---|---|---|
+| `/` | `static/index.html` | Landing **and** the vault app — `app.js` shows `#landing` or `#vault-view` off `?vault=` / `?share=` exactly as before |
+| `/how-it-works/` | `static/how-it-works/index.html` | The four stages, in plain language |
+| `/what-we-check/` | `static/what-we-check/index.html` | The full rule list, **loaded live** from `GET /api/statutes` by `static/rules.js` |
+| `/about/` | `static/about/index.html` | Why it exists, who it's for, what it deliberately won't do, how access works |
 
-Rules that keep it honest, which matter more here than anywhere else in the
-app because this is the page that makes claims:
+Clean URLs come free: `StaticFiles(..., html=True)` serves `index.html` for a
+directory and 307s `/about` → `/about/`. No routing changes were needed.
 
-- **The hero preview is built from the real components** (`.finding`,
-  `.rule-row`, `.cite`, `.tally`), not a picture of them, so it cannot drift
-  from what the product actually renders. It is labelled "Example output".
-- **The statute table section is live**, fetched from `GET /api/statutes` on
-  page load. It is the one section that proves itself.
-- **Every capability listed is built and working.** PLAN.md's non-negotiable
-  ("nothing in the demo video that does not work end to end") applies to the
-  landing page too — if a feature is cut, cut its card.
-- **There is a "What it does not do" section.** Jurisdiction limits, not legal
-  advice, the agent's refusal, draft rules never rendering, and the fact that
-  a rental licence can't be checked from a lease. A tool in this space that
-  overclaims is worse than none.
+**The landing page is deliberately thin**: headline, one paragraph, three
+cards, the start form, footer. Everything legal or detailed was moved behind
+the nav. It had grown into a single long page carrying statute citations, the
+agent's refusal examples and a limits section — too much to read and too much
+to ask of someone who just wants to know what this is.
 
-Layout note: `<main>` no longer carries the width constraint — the landing
-needs full-bleed bands, so `#vault-view` and `.wrap` carry `max-width: 1080px`
-instead. `#landing .statute-scroll` also lifts the vault view's 420px scroll
-cap: a list clipped through the middle of a card reads as broken rather than
-scrollable, and this is the "the statute table is the product" moment.
+**Language is plain throughout.** "Adjudicate", "statute table", "grounded
+agent", "counterparty" and "vault" are all internal vocabulary — the user-facing
+copy says "check against the law", "the rules we check", "ask about your own
+records", "your landlord" and "your record". Keep it that way: the audience is
+renters in housing trouble, not lawyers.
 
-Verified: no horizontal overflow at 320/360/390/414/768/1100/1440px, both
-colour schemes, and `/` vs `/?vault=` still switch correctly (landing shown
-with 9 statutes; vault view shown with findings rendered).
+Other things worth keeping:
+
+- **`rules.js` is standalone**, not part of `app.js`. The rules page has no
+  vault, no sign-in and no forms, and `app.js` would throw looking for elements
+  that page doesn't have. `app.js` no longer renders statutes at all.
+- **The header and footer are copied into each page** rather than injected by
+  JS. Four copies is less cost than a rendering step, and the nav then works
+  with JavaScript off.
+- **`.page ul` caps body lists at 65ch** for readability, which is right for
+  prose and wrong for card grids — it silently squeezed the landing's three
+  cards into two columns with dead space beside them. `.page .home-points`,
+  `.page .steps` and `.page .statute-list` opt out, and they need the `.page`
+  prefix because `.page ul` (class + element) otherwise wins on specificity.
+  Caught by measuring computed styles, not by eye.
+
+Verified: no horizontal overflow on any of the four pages at 320/390/768/1280,
+both colour schemes, `/` vs `/?vault=` still switch correctly, and the rules
+page loads all 9 verified rules split into its two groups.
 
 ## Rules engine (`app/rules_engine.py`, `app/condition_eval.py`)
 
