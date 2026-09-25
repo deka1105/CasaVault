@@ -1,23 +1,17 @@
 <!doctype html><meta charset="utf-8"><title>probe</title><body style="margin:0">
+<iframe id="a" src="/?vault=832f6a33de51462d8a1c5b9c54397d98" style="width:1100px;height:1200px;border:0"></iframe>
+<iframe id="b" src="/what-we-check/" style="width:1100px;height:1200px;border:0"></iframe>
 <script>
-const pages=["/","/how-it-works/","/what-we-check/","/about/","/?vault=832f6a33de51462d8a1c5b9c54397d98"];
-const widths=[320,390,768,1280];
-const out=[];let i=0,j=0;
-function next(){
-  if(i>=pages.length){document.title=out.join(" ;; ");return;}
-  const url=pages[i], w=widths[j];
-  const f=document.createElement("iframe");
-  f.style.cssText="width:"+w+"px;height:3000px;border:0";f.src=url;
-  document.body.appendChild(f);
-  f.onload=()=>setTimeout(()=>{
-    const d=f.contentDocument,de=d.documentElement,vw=de.clientWidth;const bad=[];
-    d.querySelectorAll("*").forEach(n=>{const r=n.getBoundingClientRect();
-      if(r.width>0&&r.right>vw+1&&!n.closest(".table-wrap"))bad.push(n.tagName+"."+(n.className||"-"));});
-    if(de.scrollWidth>vw+1) out.push(url+" @"+w+": OVERFLOW +"+(de.scrollWidth-vw)+" ["+bad.slice(0,2).join("/")+"]");
-    f.remove();
-    j++; if(j>=widths.length){j=0;i++;}
-    next();},900);
-}
-next();
-setTimeout(()=>{if(!document.title.includes(";;"))document.title=out.length?out.join(" ;; "):"ALL CLEAN";},55000);
+setTimeout(()=>{
+  const d=document.getElementById("a").contentDocument;
+  const e=document.getElementById("b").contentDocument;
+  document.title=[
+    "vault: landing="+(d.getElementById("landing").hidden?"hidden":"SHOWN")
+      +" view="+(d.getElementById("vault-view").hidden?"hidden":"SHOWN")
+      +" findings="+d.getElementById("findings-list").children.length,
+    "rules page: deposit="+e.getElementById("rules-deposit").children.length
+      +" philly="+e.getElementById("rules-philly").children.length
+      +" error="+(e.getElementById("rules-error").hidden?"none":"SHOWN"),
+  ].join(" ;; ");
+},3500);
 </script>
