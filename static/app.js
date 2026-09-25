@@ -1131,7 +1131,10 @@ async function init() {
   setupPartyToggle();
   setupCopyShare();
   setupAsk();
+  setupIncidentForm();
   updateEventFormMode();
+
+  $("pull-city-btn").addEventListener("click", pullCityRecord);
 
   const params = new URLSearchParams(location.search);
   const shareToken = params.get("share");

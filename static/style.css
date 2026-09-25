@@ -700,6 +700,23 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .vault-list a { display: block; padding: 0.5rem 0.7rem; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface-sunk); text-decoration: none; color: var(--ink); font-size: 0.9rem; }
 .vault-list a:hover { border-color: var(--accent); }
 
+.draft-preview {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  background: var(--surface-sunk);
+}
+.draft-body {
+  margin: 0.3rem 0 0;
+  white-space: pre-wrap;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
 .is-busy { opacity: 0.55; pointer-events: none; }
 
 .spinner {
