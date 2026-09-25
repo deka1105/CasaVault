@@ -21,6 +21,7 @@ from fastapi.responses import HTMLResponse, Response
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.documents import events_with_documents
 from app.evidence import render_evidence_packet
 from app.models import Deadline, Flag, Vault, VaultEvent
 from app.routers.documents import build_document_response
