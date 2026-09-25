@@ -51,7 +51,7 @@ _RATE_LIMIT_MARKERS = ("429", "rate limit", "too_many_requests", "quota", "resou
 _TRANSIENT_MARKERS = ("503", "500", "service_unavailable", "unavailable", "high demand", "overloaded", "timeout", "timed out", "connection")
 
 
-def _classify(exc: Exception) -> Exception:
+def classify_extraction_error(exc: Exception) -> Exception:
     """Map a provider exception onto our own taxonomy. Matched on text, not
     class: google-genai raises these from private _gaos.* modules whose import
     paths are not a stable API."""
@@ -109,7 +109,7 @@ def extract_facts_from_file(path: Path) -> dict[str, Any]:
             },
         )
     except Exception as exc:
-        raise _classify(exc) from exc
+        raise classify_extraction_error(exc) from exc
 
     facts = ExtractedFacts.model_validate_json(interaction.output_text)
     return facts.model_dump(exclude_none=True)

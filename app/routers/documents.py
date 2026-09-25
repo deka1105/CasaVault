@@ -16,6 +16,7 @@ from app.extractor import (
     ExtractionUnavailable,
     ExtractionUnsupported,
     ExtractionUpstreamError,
+    classify_extraction_error,
     extract_facts_from_file,
 )
 from app.models import Vault, VaultEvent
@@ -25,6 +26,52 @@ from app.schemas import DocumentUploadRead, EventRead, ExtractionInfo
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/vaults/{vault_id}/documents", tags=["documents"])
+
+
+def _info(log, vault_id, exc):
+    log.info("extraction skipped for vault %s: %s", vault_id, exc)
+
+
+def _warn(log, vault_id, exc):
+    log.warning("extraction unavailable for vault %s: %s", vault_id, exc)
+
+
+def _exception(log, vault_id, exc):
+    log.exception("extraction failed for an upload in vault %s: %s", vault_id, exc)
+
+
+def _silent(log, vault_id, exc):
+    pass  # no key configured: the expected state in dev, not worth a log line
+
+
+# exception type -> (status, user-facing message, how to log it)
+_EXTRACTION_OUTCOMES = {
+    ExtractionUnavailable: (
+        "not_configured",
+        "Automatic reading is not configured on this deployment. The document is stored; enter any known facts by hand.",
+        _silent,
+    ),
+    ExtractionUnsupported: (
+        "unsupported_type",
+        "This file type can't be read automatically. It is stored, and you can log its facts by hand.",
+        _info,
+    ),
+    ExtractionRateLimited: (
+        "rate_limited",
+        "The daily limit for automatic document reading has been reached. Your document is stored — add its facts by hand, or try again tomorrow.",
+        _warn,
+    ),
+    ExtractionUpstreamError: (
+        "upstream_error",
+        "The document reader was temporarily unreachable. Your document is stored — try re-uploading shortly, or add its facts by hand.",
+        _warn,
+    ),
+    None: (
+        "failed",
+        "The document couldn't be read automatically. It is stored — add its facts by hand.",
+        _exception,
+    ),
+}
 
 
 def _require_vault(vault_id: str, session: Session) -> Vault:
@@ -77,47 +124,27 @@ async def upload_document(
 
     temp_path = storage.save_temp(vault_id, name, content)
 
+    # One dispatch point for every way reading a document can fail. Each
+    # outcome stores the document and leaves facts empty — extraction is
+    # strictly best-effort — but each says something different to the user,
+    # because "this document stated nothing we track" and "the daily model
+    # quota ran out" look identical from an empty facts dict, and the second
+    # one reads as a broken product during a demo.
+    facts = None
     try:
         facts = extract_facts_from_file(temp_path)
         extraction = ExtractionInfo(
             status="ok" if facts else "no_facts",
             message=None if facts else "The document was read, but it stated none of the facts this vault tracks.",
         )
-    except ExtractionUnavailable:
-        # No key configured — expected in dev, not an error.
-        facts = None
-        extraction = ExtractionInfo(
-            status="not_configured",
-            message="Automatic reading is not configured on this deployment. The document is stored; enter any known facts by hand.",
-        )
-    except ExtractionUnsupported as exc:
-        logger.info("skipping extraction for event in vault %s: %s", vault_id, exc)
-        facts = None
-        extraction = ExtractionInfo(
-            status="unsupported_type",
-            message="This file type can't be read automatically. It is stored, and you can log its facts by hand.",
-        )
-    except ExtractionRateLimited as exc:
-        logger.warning("extraction hit the provider quota for vault %s: %s", vault_id, exc)
-        facts = None
-        extraction = ExtractionInfo(
-            status="rate_limited",
-            message="The daily limit for automatic document reading has been reached. Your document is stored — add its facts by hand, or try again tomorrow.",
-        )
-    except ExtractionUpstreamError as exc:
-        logger.warning("extraction upstream failure for vault %s: %s", vault_id, exc)
-        facts = None
-        extraction = ExtractionInfo(
-            status="upstream_error",
-            message="The document reader was temporarily unreachable. Your document is stored — try re-uploading shortly, or add its facts by hand.",
-        )
-    except Exception:
-        logger.exception("extraction failed for an upload in vault %s", vault_id)
-        facts = None
-        extraction = ExtractionInfo(
-            status="failed",
-            message="The document couldn't be read automatically. It is stored — add its facts by hand.",
-        )
+    except Exception as raw:
+        # classify() is applied here as well as inside the extractor so a
+        # provider error raised from any path lands in the right bucket,
+        # rather than only the ones the extractor itself wrapped.
+        exc = classify_extraction_error(raw)
+        status, message, log = _EXTRACTION_OUTCOMES.get(type(exc), _EXTRACTION_OUTCOMES[None])
+        log(logger, vault_id, exc)
+        extraction = ExtractionInfo(status=status, message=message)
 
     storage_ref = storage.persist(temp_path, vault_id)
 
