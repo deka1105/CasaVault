@@ -90,11 +90,8 @@ async function getAuthHeaders() {
 
 async function refreshMyVaults() {
   const section = qs("my-vaults");
-  if (!clerk || !clerk.user || !qs("landing") || qs("landing").hidden === undefined) {
-    // still allow refresh even when landing is hidden isn't relevant here;
-    // the real gate is simply: only show this while signed in.
-  }
-  if (!clerk || !clerk.user) {
+  const onLanding = qs("vault-view").hidden; // "your vaults" only makes sense on the browse screen
+  if (!clerk || !clerk.user || !onLanding) {
     section.hidden = true;
     return;
   }
@@ -105,7 +102,7 @@ async function refreshMyVaults() {
       vaults
         .map((v) => `<li><a href="/?vault=${v.id}">${v.label || `Vault ${v.id}`}</a></li>`)
         .join("") || "<li><em>No vaults yet — create one below.</em></li>";
-    section.hidden = qs("vault-view").hidden ? false : true;
+    section.hidden = false;
   } catch {
     section.hidden = true;
   }
@@ -220,9 +217,10 @@ function setupPartyToggle() {
 
 function setupCreateVault() {
   qs("create-vault-btn").addEventListener("click", async () => {
+    const authHeaders = await getAuthHeaders(); // attaches ownership if signed in; {} otherwise
     const vault = await api("/api/vaults", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({}),
     });
     history.replaceState(null, "", `/?vault=${vault.id}`);
