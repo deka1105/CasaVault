@@ -1,8 +1,10 @@
+import asyncio
 from types import SimpleNamespace
 
-import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 
+from app.auth import get_optional_user_id
 from app.main import app
 
 
@@ -15,34 +17,23 @@ def _fake_state(signed_in: bool, sub: str = "user_abc123"):
     )
 
 
-@pytest.mark.asyncio
-async def test_get_optional_user_id_returns_none_without_clerk_key(monkeypatch):
+def _request_with_headers(headers: list[tuple[bytes, bytes]]) -> Request:
+    return Request({"type": "http", "headers": headers})
+
+
+def test_get_optional_user_id_returns_none_without_clerk_key(monkeypatch):
     monkeypatch.setattr("app.auth.CLERK_SECRET_KEY", None)
-
-    from fastapi import Request
-
-    from app.auth import get_optional_user_id
-
-    scope = {"type": "http", "headers": [(b"authorization", b"Bearer whatever")]}
-    request = Request(scope)
-    assert await get_optional_user_id(request) is None
+    request = _request_with_headers([(b"authorization", b"Bearer whatever")])
+    assert asyncio.run(get_optional_user_id(request)) is None
 
 
-@pytest.mark.asyncio
-async def test_get_optional_user_id_returns_none_without_auth_header(monkeypatch):
+def test_get_optional_user_id_returns_none_without_auth_header(monkeypatch):
     monkeypatch.setattr("app.auth.CLERK_SECRET_KEY", "sk_test_fake")
-
-    from fastapi import Request
-
-    from app.auth import get_optional_user_id
-
-    scope = {"type": "http", "headers": []}
-    request = Request(scope)
-    assert await get_optional_user_id(request) is None
+    request = _request_with_headers([])
+    assert asyncio.run(get_optional_user_id(request)) is None
 
 
-@pytest.mark.asyncio
-async def test_get_optional_user_id_returns_sub_on_valid_session(monkeypatch):
+def test_get_optional_user_id_returns_sub_on_valid_session(monkeypatch):
     monkeypatch.setattr("app.auth.CLERK_SECRET_KEY", "sk_test_fake")
 
     class FakeClerk:
@@ -53,18 +44,11 @@ async def test_get_optional_user_id_returns_sub_on_valid_session(monkeypatch):
             return _fake_state(signed_in=True, sub="user_live")
 
     monkeypatch.setattr("app.auth.Clerk", FakeClerk)
-
-    from fastapi import Request
-
-    from app.auth import get_optional_user_id
-
-    scope = {"type": "http", "headers": [(b"authorization", b"Bearer real-looking-token")]}
-    request = Request(scope)
-    assert await get_optional_user_id(request) == "user_live"
+    request = _request_with_headers([(b"authorization", b"Bearer real-looking-token")])
+    assert asyncio.run(get_optional_user_id(request)) == "user_live"
 
 
-@pytest.mark.asyncio
-async def test_get_optional_user_id_returns_none_on_verification_failure(monkeypatch):
+def test_get_optional_user_id_returns_none_on_verification_failure(monkeypatch):
     monkeypatch.setattr("app.auth.CLERK_SECRET_KEY", "sk_test_fake")
 
     class FakeClerk:
@@ -75,14 +59,8 @@ async def test_get_optional_user_id_returns_none_on_verification_failure(monkeyp
             raise RuntimeError("simulated Clerk outage")
 
     monkeypatch.setattr("app.auth.Clerk", FakeClerk)
-
-    from fastapi import Request
-
-    from app.auth import get_optional_user_id
-
-    scope = {"type": "http", "headers": [(b"authorization", b"Bearer whatever")]}
-    request = Request(scope)
-    assert await get_optional_user_id(request) is None
+    request = _request_with_headers([(b"authorization", b"Bearer whatever")])
+    assert asyncio.run(get_optional_user_id(request)) is None
 
 
 def test_create_vault_without_auth_leaves_owner_unset():
