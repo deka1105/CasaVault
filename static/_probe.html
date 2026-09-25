@@ -1,9 +1,13 @@
 <!doctype html><meta charset="utf-8"><title>probe</title><body style="margin:0">
 <iframe id="f" src="/" style="width:1280px;height:1800px;border:0"></iframe>
+<iframe id="g" src="/how-it-works/" style="width:1280px;height:1800px;border:0"></iframe>
 <script>
-document.getElementById("f").onload = () => setTimeout(() => {
+setTimeout(() => {
   const d = document.getElementById("f").contentDocument;
-  const g = d.querySelector(".home-points"), cs = getComputedStyle(g);
-  document.title = `grid w=${Math.round(g.getBoundingClientRect().width)} cols=${cs.gridTemplateColumns}`;
-}, 2200);
+  const e = document.getElementById("g").contentDocument;
+  const grid = d.querySelector(".home-points");
+  const steps = e.querySelector(".steps");
+  document.title = `home grid w=${Math.round(grid.getBoundingClientRect().width)} cols=${getComputedStyle(grid).gridTemplateColumns}`
+    + ` ;; steps padL=${getComputedStyle(steps).paddingLeft} w=${Math.round(steps.getBoundingClientRect().width)}`;
+}, 3000);
 </script>

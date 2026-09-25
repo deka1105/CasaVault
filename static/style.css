@@ -824,7 +824,9 @@ a.brand { text-decoration: none; color: inherit; }
    prose and wrong for a card grid — it squeezed three cards into two
    columns with dead space beside them. Card lists opt out of both the
    measure cap and the list indent. */
-.home-points, .steps {
+/* Scoped with .page so these beat `.page ul` (class + element), which
+   otherwise wins on specificity and re-applies the 65ch prose cap. */
+.page .home-points, .page .steps {
   max-width: none;
   padding-left: 0;
   list-style: none;
