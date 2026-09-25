@@ -280,14 +280,119 @@ start or redeploy. Fixed by making both swappable, not by rearchitecting:
     fresh daily quota window) before it can be shown, not more code
     changes.
 
+## The read-only share link (`app/routers/share.py`)
+
+**This was a real access-control bug, not a refactor.** `GET
+/api/vaults/by-share-token/{token}` used to return the full `VaultRead`,
+including the vault's `id`. The vault id *is* the write credential — every
+write route (`POST /events`, `POST /documents`) is addressed by it and
+checks nothing else — so anyone holding a "read-only" share link could read
+the id out of that JSON response and post events or upload documents into
+someone else's vault. The browser hiding the controls (`state.isOwner`) was
+the only thing stopping them, and a share link is by definition opened by
+the *other* party.
+
+The fix: a separate schema (`VaultShareRead`, which omits `id` and
+`share_token`) and a separate router holding every token-addressed route.
+Read-only is now a property of which endpoints that surface exposes, not of
+which buttons the page renders. Guarded by
+`tests/test_share_and_evidence.py::test_share_token_lookup_returns_vault_without_leaking_owner_credential`.
+
+Two consequences worth remembering:
+- The shared evidence packet must build document links against
+  `/api/vaults/by-share-token/{token}/documents` (`document_base` in
+  `app/evidence.py`), or the owner credential ends up embedded in the HTML
+  handed to the counterparty.
+- The agent (`/ask`) is deliberately **not** on the share surface. It stays
+  owner-only, both for scope and to avoid spending the model quota on
+  whoever holds a link.
+
 ## Front end (`static/`)
 
 Plain HTML/JS, single page, no build step. `app.js` drives everything off
-`?vault=<id>` (owner) or `?share=<token>` (read-only counterparty) query
-params — the same page renders both modes, gating owner-only controls
-(event form, share link) on `state.isOwner`. Facts are entered as a raw JSON
-textarea, not a generated form, since fact keys are whatever the current
-statute conditions reference — see the "cheap interfaces" note in `PLAN.md`.
+`?vault=<id>` (owner) or `?share=<token>` (counterparty) — the same page
+renders both, but they read from *different API surfaces*, and the share mode
+never learns the vault id at all (`state.vaultId` stays null; `vaultPath()`
+routes to the token surface).
+
+Rules that are load-bearing, not style preferences:
+
+- **Never use `innerHTML` for server data.** Everything rendered from the API
+  is built with `createElement`/`textContent` via the `el()` helper. The
+  previous version interpolated `notes`, `original_filename`, `citation`,
+  `description` and the vault label straight into `innerHTML` — all
+  attacker-controlled (a filename is chosen by whoever uploads; a share link
+  is opened by the counterparty), so this was a live stored-XSS path into the
+  other party's session.
+- **Date-only strings must be parsed as local dates.** `new Date("2026-08-31")`
+  is parsed as UTC midnight per spec and `toLocaleDateString` then renders it
+  in the viewer's zone, so everywhere west of UTC it printed the *previous*
+  day. In this product that is not cosmetic: the 30-day deposit clock was
+  being shown to tenants as expiring a day earlier than 68 P.S. § 250.512
+  actually allows. `formatDate()` handles `YYYY-MM-DD` separately from real
+  timestamps; keep that split.
+- **`minmax()` floors are wrapped in `min(..., 100%)`** in `style.css`. A bare
+  `minmax(300px, 1fr)` never shrinks below 300px and forced the whole page
+  wider than a 320px phone screen. Verified by measuring `scrollWidth` vs
+  `clientWidth` in same-origin iframes at 320/360/390/414/600/900px — by eye
+  it looked fine, because headless Chrome clamps its viewport to 485px.
+- The agent panel ("Ask this vault") is owner-only and ships the PLAN.md demo
+  questions as one-click chips, including "Will I win in court?" — the
+  refusal that is supposed to go in the demo video.
+
+## Gemini client policy (`app/gemini_client.py`)
+
+Both the extractor and the agent build their client here so timeout and retry
+policy are identical and set in one place.
+
+**google-genai retries on its own, and its defaults are hostile here**:
+verified against the installed package's `types.HttpRetryOptions` field docs
+(not the public docs) — 5 attempts, exponential backoff up to 60s per delay,
+on a retryable set that includes 408, 429 and every 5xx. Measured effect: an
+exhausted daily quota took **2 minutes 19 seconds** to surface its 429. That
+is bad twice over — the free tier's cap is a *daily* one, so every retry is
+guaranteed waste, and `vercel.json` caps functions at 300s, so a single ask
+burning 140s sits close to the ceiling. Disabling SDK retries took the same
+call to **20 seconds**.
+
+So: `attempts=1` at the SDK layer, a 120s hard timeout, and retry policy owned
+by the application, which can tell a daily quota apart from a transient 5xx.
+
+## Failure taxonomy — say which safe outcome happened
+
+Both the agent and the extractor already failed *safely* (never a guess,
+never a 500). What they did not do is say *which* failure it was, and that
+distinction is the difference between a user trusting the product and filing
+a bug against it:
+
+- `app/agent.py` raises `AgentUnavailable` (no key), `AgentRateLimited`
+  (429 — **not retried**, a daily cap cannot clear on retry) or
+  `AgentUpstreamError` (5xx/timeout — retried 3× with backoff).
+  `AskResponse.unavailable` tells the front end whether this was a fault or
+  the designed refusal, which get visibly different treatment.
+  A refusal is the product working (PLAN.md: "It is the point"); showing
+  "I can't ground that in your vault" when the truth is "Gemini returned 503"
+  teaches the user to distrust the thing that was working correctly.
+  This was live: a 503 during testing surfaced as "the grounded agent isn't
+  configured yet", which was simply false.
+- `app/extractor.py` classifies the same way (`ExtractionRateLimited`,
+  `ExtractionUpstreamError`), and `app/routers/documents.py` maps every
+  outcome through one `_EXTRACTION_OUTCOMES` table onto
+  `DocumentUploadRead.extraction` — a **response-only** field, so no new
+  model column and therefore no manual `ALTER TABLE` against the live
+  database. The upload always succeeds and the document is always stored;
+  the UI now says whether extraction found nothing, hit the daily limit, or
+  isn't configured.
+
+## Upload size cap
+
+`MAX_UPLOAD_BYTES` is **4MB**, not 15MB, because Vercel Functions cap request
+bodies at 4.5MB and enforce it at the platform edge — a larger upload never
+reaches this app, so it could never produce our own clean 413. The old 15MB
+limit was a promise the deployment could not keep: anything between 4.5MB and
+15MB failed with an opaque platform error. The front end checks the same
+limit before uploading so the user gets told immediately. Overridable via the
+`MAX_UPLOAD_BYTES` env var for a self-hosted run with no such edge limit.
 
 ## Rules engine (`app/rules_engine.py`, `app/condition_eval.py`)
 
