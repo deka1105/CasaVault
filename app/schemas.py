@@ -127,6 +127,61 @@ class DeadlineRead(BaseModel):
     created_at: datetime
 
 
+# Fixed vocabularies. Free text here would be useless for filtering and
+# carries no weight in a record — and urgency in particular has legal
+# consequences, since losing heat in winter is not the same kind of problem
+# as a slow drain.
+IncidentCategory = Literal[
+    "heat", "hot_water", "water_leak", "electrical", "pest", "mold",
+    "security", "appliance", "structural", "other",
+]
+IncidentUrgency = Literal["emergency", "urgent", "routine"]
+
+
+class IncidentCreate(BaseModel):
+    category: IncidentCategory
+    urgency: IncidentUrgency
+    summary: str
+    detail: Optional[str] = None
+    # Heat, water, electricity or security being affected is the question that
+    # changes which protections apply, so it is asked explicitly rather than
+    # inferred from free text.
+    affects_essential_service: bool = False
+    previously_reported: bool = False
+    reported_at: Optional[date] = None
+    management_email: Optional[str] = None
+    reporter_name: Optional[str] = None
+
+
+class IncidentDraft(BaseModel):
+    """A drafted notice, for the user to read and send themselves.
+
+    Never sent by us: a notice that arrives from casavault.app is weaker
+    evidence that the *resident* gave notice, and sending a housing dispute
+    on someone's behalf is not a thing this app should do silently.
+    """
+
+    subject: str
+    body: str
+    to: Optional[str] = None
+    mailto: str
+
+
+class IncidentRead(BaseModel):
+    id: int
+    reference_code: str
+    category: str
+    urgency: str
+    summary: str
+    affects_essential_service: bool
+    previously_reported: bool
+    reported_at: Optional[date]
+    acknowledged_at: Optional[date]
+    work_started_at: Optional[date]
+    resolved_at: Optional[date]
+    draft: Optional[IncidentDraft] = None
+
+
 class AskRequest(BaseModel):
     question: str
     # Literal, not str: an unrecognized party used to fall through to the
