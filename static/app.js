@@ -390,7 +390,8 @@ async function refreshData() {
     const [events, flags, deadlines] = await Promise.all([
       api(vaultPath("/events")),
       api(vaultPath("/flags")),
-      api(vaultPath("/deadlines")),
+      // Clocks are party-framed server-side, same as flags.
+      api(`${vaultPath("/deadlines")}?party=${encodeURIComponent(state.party)}`),
     ]);
     renderEvents(events);
     renderFindings(flags);
