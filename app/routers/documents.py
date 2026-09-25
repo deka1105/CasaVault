@@ -22,7 +22,7 @@ from app.extractor import (
 )
 from app.models import Vault, VaultDocument, VaultEvent
 from app.rules_engine import adjudicate_vault
-from app.schemas import DocumentUploadRead, EventRead, ExtractionInfo
+from app.schemas import DocumentRead, DocumentUploadRead, EventRead, ExtractionInfo
 
 logger = logging.getLogger(__name__)
 
@@ -232,10 +232,11 @@ async def upload_document(
     # attributes SQLAlchemy has expired and never had explicitly set, so
     # fields like `notes` went missing and failed validation. Going through
     # attribute access triggers the load.
-    return DocumentUploadRead(
-        **EventRead.model_validate(event, from_attributes=True).model_dump(),
-        extraction=extraction,
-    )
+    view = EventRead.model_validate(event, from_attributes=True).model_dump()
+    # Report the file this call actually stored. Left empty, the response said
+    # "documents: []" immediately after creating one, which reads as a failure.
+    view["documents"] = [DocumentRead.model_validate(document, from_attributes=True).model_dump()]
+    return DocumentUploadRead(**view, extraction=extraction)
 
 
 def build_document_response(vault_id: str, document_id: int, session: Session) -> Response:
