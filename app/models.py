@@ -47,6 +47,33 @@ class VaultEvent(SQLModel, table=True):
     notes: Optional[str] = None
 
 
+class VaultDocument(SQLModel, table=True):
+    """One stored file. Many of these can hang off a single VaultEvent.
+
+    A real Philadelphia lease arrives as ~25 PDFs that are all one act —
+    signing the lease. Before this, each file had to become its own event,
+    which turned one signing into 25 timeline rows and made the user pick a
+    date 25 times. VaultEvent keeps its own source_document_ref for events
+    written before this table existed, so old download links still resolve;
+    see app/routers/documents.py:build_document_response.
+
+    Safe to add mid-flight, unlike a new column: SQLModel.metadata.create_all
+    does create tables that don't exist yet — it only refuses to alter
+    existing ones (see the migration note in CLAUDE.md).
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    vault_id: str = Field(foreign_key="vault.id", index=True)
+    event_id: int = Field(foreign_key="vaultevent.id", index=True)
+    storage_ref: str
+    original_filename: Optional[str] = None
+    # Why this file was or wasn't sent to the extractor — see app/triage.py.
+    triage_category: str = "priority"
+    extraction_status: str = "skipped"
+    extraction_note: Optional[str] = None
+    created_at: datetime = Field(default_factory=_now)
+
+
 class Flag(SQLModel, table=True):
     """One adjudication result. statute_id must match a verified rule's `id`
     in statutes.yaml — never persist a flag for a draft rule."""
