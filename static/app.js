@@ -599,6 +599,20 @@ function setupAsk() {
 
 /* --- statute table ------------------------------------------------------- */
 
+/* Clock rules (type: deadline) keep a {deadline} placeholder in their
+ * framing that is only filled once an event actually starts the clock, so
+ * printing the framing verbatim here leaked the raw template at the user.
+ * Those rules carry their substance in clock/requires instead. */
+function statuteSummary(rule) {
+  if (rule.clock) {
+    const parts = [`Clock: ${rule.clock}`];
+    if (rule.requires) parts.push(`Requires: ${rule.requires}`);
+    return parts.join(" · ");
+  }
+  const framing = (rule.party_framing && rule.party_framing.tenant) || rule.detail || "";
+  return framing.replace(/\{[^}]*\}/g, "the deadline");
+}
+
 async function renderStatuteTable() {
   let rules;
   try {
@@ -615,7 +629,7 @@ async function renderStatuteTable() {
           el("span", { class: "cite", text: r.citation }),
           el("span", { class: "statute-id", text: r.id }),
         ]),
-        el("p", { text: (r.party_framing && r.party_framing.tenant) || r.detail || "" }),
+        el("p", { text: statuteSummary(r) }),
       ])
     )
   );

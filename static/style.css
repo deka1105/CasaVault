@@ -549,6 +549,14 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* --- statute table ------------------------------------------------------ */
 
 .statute-list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+/* Capped so the full table informs without dominating the landing page. */
+.statute-scroll {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
 .statute {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);

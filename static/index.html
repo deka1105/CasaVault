@@ -83,18 +83,19 @@
           <ul id="my-vaults-list" class="vault-list"></ul>
         </section>
 
-        <section class="card">
-          <div class="section-head">
-            <h2>The statute table</h2>
-            <p class="hint" id="statute-count"></p>
-          </div>
-          <p class="hint" style="color: var(--ink-soft); font-size: 0.85rem;">
-            This is the product. Every flag and every agent answer resolves to one of these rows.
-            Rules still awaiting a pin cite are marked draft and never render to a user.
-          </p>
-          <ul id="statute-list" class="statute-list"></ul>
-        </section>
       </div>
+
+      <section class="card" style="margin-top: 1.25rem;">
+        <div class="section-head">
+          <h2>The statute table</h2>
+          <p class="hint" id="statute-count"></p>
+        </div>
+        <p class="hint" style="color: var(--ink-soft); font-size: 0.85rem; max-width: 70ch;">
+          This is the product. Every flag and every agent answer resolves to one of these rows.
+          Rules still awaiting a pin cite are marked draft and never render to a user.
+        </p>
+        <ul id="statute-list" class="statute-list statute-scroll"></ul>
+      </section>
     </section>
 
     <!-- =========================== VAULT VIEW ========================== -->
@@ -329,18 +330,5 @@
   </main>
 
   <script src="/app.js"></script>
-  <script>
-  window.addEventListener("load", () => setTimeout(() => {
-    const vw = document.documentElement.clientWidth;
-    const bad = [];
-    document.querySelectorAll("*").forEach((n) => {
-      const r = n.getBoundingClientRect();
-      if (r.width > 0 && (r.right > vw + 1 || r.left < -1)) {
-        bad.push(`${n.tagName}.${n.className||"(none)"}#${n.id||"-"} w=${Math.round(r.width)} L=${Math.round(r.left)} R=${Math.round(r.right)}`);
-      }
-    });
-    document.title = "VW=" + vw + " scrollW=" + document.documentElement.scrollWidth + " || " + bad.slice(0, 14).join(" || ");
-  }, 2500));
-  </script>
 </body>
 </html>
