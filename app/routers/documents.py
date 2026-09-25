@@ -62,7 +62,10 @@ async def upload_document(
     while chunk := await file.read(1024 * 1024):
         size += len(chunk)
         if size > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="file too large")
+            raise HTTPException(
+                status_code=413,
+                detail=f"file too large (limit {MAX_UPLOAD_BYTES // (1024 * 1024)}MB)",
+            )
         chunks.append(chunk)
     content = b"".join(chunks)
 
@@ -100,9 +103,10 @@ async def upload_document(
     return event
 
 
-@router.get("/{event_id}")
-def download_document(vault_id: str, event_id: int, session: Session = Depends(get_session)):
-    _require_vault(vault_id, session)
+def build_document_response(vault_id: str, event_id: int, session: Session) -> Response:
+    """Shared by the owner route below and the token-addressed read-only
+    route in app/routers/share.py, so both download paths enforce the same
+    vault-scoping check and the same attachment-only serving rules."""
     event = session.get(VaultEvent, event_id)
     if event is None or event.vault_id != vault_id or not event.source_document_ref:
         raise HTTPException(status_code=404, detail="document not found")
@@ -118,5 +122,17 @@ def download_document(vault_id: str, event_id: int, session: Session = Depends(g
     return Response(
         content=content,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": _content_disposition(download_name)},
+        headers={
+            "Content-Disposition": _content_disposition(download_name),
+            # Belt-and-braces against content sniffing overriding the
+            # octet-stream type on an uploaded .html/.svg masquerading as an
+            # allowed extension.
+            "X-Content-Type-Options": "nosniff",
+        },
     )
+
+
+@router.get("/{event_id}")
+def download_document(vault_id: str, event_id: int, session: Session = Depends(get_session)) -> Response:
+    _require_vault(vault_id, session)
+    return build_document_response(vault_id, event_id, session)
