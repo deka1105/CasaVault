@@ -338,6 +338,8 @@ async function renderVault() {
   $("owner-controls").hidden = !isOwner();
   $("event-form-section").hidden = !isOwner();
   $("ask-section").hidden = !isOwner();
+  $("incident-section").hidden = !isOwner();
+  $("city-record-section").hidden = !isOwner();
   $("counterparty-controls").hidden = isOwner();
 
   if (isOwner()) {
@@ -354,7 +356,7 @@ async function renderVault() {
     $("share-evidence-link").href = `${vaultPath("/evidence")}?party=${state.party}`;
   }
   updateEvidenceLink();
-  await Promise.all([renderRtcBanner(), refreshData()]);
+  await Promise.all([renderRtcBanner(), refreshData(), loadIncidents()]);
 }
 
 function updateEvidenceLink() {
