@@ -33,6 +33,7 @@ def get_evidence_packet(
         flags,
         deadlines,
         party=party,
+        vault_name=vault.label or vault.id,
         documents_by_event=_group_documents(documents),
         deadline_descriptions={
             d.id: describe_deadline(d, request.app.state.statutes, party) for d in deadlines

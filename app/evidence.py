@@ -19,6 +19,7 @@ def render_evidence_packet(
     document_base: str | None = None,
     deadline_descriptions: dict[int, str] | None = None,
     documents_by_event: dict[int, list] | None = None,
+    vault_name: str | None = None,
 ) -> str:
     """Renders a single, self-contained, print-to-PDF-friendly HTML page —
     chronological events, then flags with citations, then open deadlines.
@@ -33,6 +34,12 @@ def render_evidence_packet(
     # the tenant's side of every finding.
     document_base = document_base or f"/api/vaults/{vault.id}/documents"
     descriptions = deadline_descriptions or {}
+    # Never fall back to vault.id for an unlabelled vault: the id is the
+    # write credential, and this packet is handed to the counterparty.
+    # The share route passes a neutral name instead — caught by
+    # tests/test_triage_and_batch.py::test_share_view_shows_every_document_in_a_bundle,
+    # which only failed because its vault happened to have no label.
+    name = vault_name or vault.label or "Untitled vault"
 
     event_rows = "\n".join(
         f"<tr><td>{_esc(e.occurred_at)}</td><td>{_esc(e.event_type)}</td>"
@@ -64,7 +71,7 @@ def render_evidence_packet(
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>CasaVault evidence packet — {_esc(vault.label or vault.id)}</title>
+<title>CasaVault evidence packet — {_esc(name)}</title>
 <style>
   body {{ font-family: Georgia, 'Times New Roman', serif; max-width: 800px; margin: 2rem auto; color: #111; }}
   h1 {{ font-size: 1.4rem; margin-bottom: 0; }}
@@ -80,7 +87,7 @@ def render_evidence_packet(
 </head>
 <body>
   <h1>CasaVault evidence packet</h1>
-  <p class="disclaimer">This is rights information, not legal advice. Vault: {_esc(vault.label or vault.id)} · Jurisdiction: Philadelphia, PA · {_esc(party.title())} view · {ack_line}</p>
+  <p class="disclaimer">This is rights information, not legal advice. Vault: {_esc(name)} · Jurisdiction: Philadelphia, PA · {_esc(party.title())} view · {ack_line}</p>
 
   <h2>Timeline</h2>
   <table>
