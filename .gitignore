@@ -8,3 +8,10 @@ uploads/
 .pytest_cache/
 .DS_Store
 .claude/
+
+# Auto-added by watcher
+.mypy_cache/
+node_modules/
+dist/
+build/
+.tox/
