@@ -71,19 +71,33 @@ def compute_deadlines_for_event(event: VaultEvent, session: Session, table: Stat
     load-bearing per statutes.yaml: without it, no clock starts."""
     new_deadlines: list[Deadline] = []
 
-    if event.event_type == "move_out" and event.facts.get("forwarding_address_provided"):
+    if event.event_type == "move_out" and (event.facts or {}).get("forwarding_address_provided"):
         rule = table.get_rule("deposit_return_clock")
         if rule and rule.get("status") == "verified":
             due_date = event.occurred_at + timedelta(days=30)
-            deadline = Deadline(
-                vault_id=event.vault_id,
-                event_id=event.id,
-                statute_id=rule["id"],
-                due_date=due_date,
-                description=rule["party_framing"]["tenant"].format(deadline=due_date.isoformat()),
-            )
-            session.add(deadline)
-            new_deadlines.append(deadline)
+            # Correcting a move-out date, or re-recording the forwarding
+            # address, used to append a second identical clock — the vault
+            # then showed the same statutory deadline twice, with no way to
+            # tell which one was real. Unlike flags (rebuilt from scratch on
+            # every write by adjudicate_vault), deadlines accumulate, so this
+            # has to dedupe explicitly.
+            already_tracked = session.exec(
+                select(Deadline).where(
+                    Deadline.vault_id == event.vault_id,
+                    Deadline.statute_id == rule["id"],
+                    Deadline.due_date == due_date,
+                )
+            ).first()
+            if already_tracked is None:
+                deadline = Deadline(
+                    vault_id=event.vault_id,
+                    event_id=event.id,
+                    statute_id=rule["id"],
+                    due_date=due_date,
+                    description=rule["party_framing"]["tenant"].format(deadline=due_date.isoformat()),
+                )
+                session.add(deadline)
+                new_deadlines.append(deadline)
 
     if new_deadlines:
         session.commit()
