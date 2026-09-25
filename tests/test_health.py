@@ -35,16 +35,3 @@ def test_vault_create_and_event_flow():
         events = client.get(f"/api/vaults/{vault_id}/events")
         assert events.status_code == 200
         assert len(events.json()) == 1
-
-
-def test_ask_refuses_until_agent_is_wired_up():
-    with TestClient(app) as client:
-        created = client.post("/api/vaults", json={"zip_code": "19121"})
-        vault_id = created.json()["id"]
-
-        res = client.post(f"/api/vaults/{vault_id}/ask", json={"question": "Will I win in court?"})
-    assert res.status_code == 200
-    body = res.json()
-    assert body["answer"] is None
-    assert body["refusal"]
-    assert body["handoff"]["route"] == "hotline"

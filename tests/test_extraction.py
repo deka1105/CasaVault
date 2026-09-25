@@ -43,9 +43,10 @@ def test_extraction_schema_round_trips_partial_facts():
     assert dumped == {"deposit_amount": 1200, "landlord_rental_license_valid": False}
 
 
-def test_upload_without_gemini_key_leaves_facts_empty():
-    # No GEMINI_API_KEY is set in this test environment — extraction should
-    # no-op rather than fail the upload.
+def test_upload_without_gemini_key_leaves_facts_empty(monkeypatch):
+    # Force the no-key path explicitly — a real key may be configured in
+    # this environment's .env, and this test must not make a live API call.
+    monkeypatch.setattr("app.extractor.GEMINI_API_KEY", None)
     with TestClient(app) as client:
         vault_id = _make_vault(client)
         res = client.post(

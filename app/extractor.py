@@ -74,7 +74,6 @@ def extract_facts_from_file(path: Path) -> dict[str, Any]:
             "mime_type": "application/json",
             "schema": ExtractedFacts.model_json_schema(),
         },
-        response_mime_type="application/json",
     )
 
     facts = ExtractedFacts.model_validate_json(interaction.output_text)

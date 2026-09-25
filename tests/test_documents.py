@@ -14,6 +14,14 @@ def _clean_uploads():
     shutil.rmtree(UPLOADS_DIR, ignore_errors=True)
 
 
+@pytest.fixture(autouse=True)
+def _no_live_extraction(monkeypatch):
+    # This file tests upload/download storage mechanics, not extraction —
+    # force the no-key path so these never make a real Gemini call even if
+    # a real GEMINI_API_KEY is configured in this environment's .env.
+    monkeypatch.setattr("app.extractor.GEMINI_API_KEY", None)
+
+
 def _make_vault(client: TestClient) -> str:
     res = client.post("/api/vaults", json={})
     assert res.status_code == 200

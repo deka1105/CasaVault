@@ -4,12 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-FastAPI skeleton is in place (vault + event CRUD, statute loader, agent stub
-that always refuses — see below). Extraction, the rules engine, and the real
-grounded agent are not implemented yet. This is a hackathon build (LexHack
-2026) with a hard submission deadline of **Sun Sep 27, 2026, 5:00 PM EDT** —
-read `PLAN.md`'s build-order table before starting any work session to know
-what day/gate we're against.
+The full pipeline is built and live-verified end to end: upload a document →
+Gemini extracts facts → rules engine flags them with citations → grounded
+agent answers questions over the vault + statute table, citing or refusing.
+Also done: share link, counterparty acknowledgement, evidence packet, RTC
+zip-check, document upload/download, front end. This is a hackathon build
+(LexHack 2026) with a hard submission deadline of **Sun Sep 27, 2026, 5:00 PM
+EDT** — read `PLAN.md`'s build-order table before starting any work session
+to know what day/gate we're against.
+
+**Gemini free-tier rate limit — read this before doing more live testing.**
+The configured key hit `20 requests per day on Free Tier` for
+`gemini-3.8-flash` during development (confirmed via a real 429 from the
+API, not a guess). Every document upload and every `/ask` call is one
+request. This is far too low for the actual demo/judging session, let alone
+further dev iteration — **upgrade this key's tier/billing before Saturday's
+demo**, or the app will start refusing extractions and agent answers mid-use
+with no visible warning to the user (it silently falls back to "safe
+refusal" behavior, which will look like a bug, not a quota issue, unless you
+know to check server logs for `RateLimitError`).
 
 ## Commands
 
@@ -59,7 +72,7 @@ tracker, and the agent are four thin entry points onto one engine.
 
 - FastAPI + SQLite (backend), SQLModel for the ORM layer
 - Plain HTML/JS front end, no framework — served as static files from `static/`, mounted last in `app/main.py` so it doesn't shadow `/api/*`
-- LLM extraction via API, schema-constrained output — not built yet
+- LLM extraction via Gemini (`google-genai`), schema-constrained output
 - Statute rules in YAML (`statutes.yaml`), loaded at startup via `app/statutes_loader.py`
 - Agent retrieval scoped to vault rows + rules rows only — no open web/model knowledge
 
@@ -71,10 +84,10 @@ tracker, and the agent are four thin entry points onto one engine.
 - `GET /api/vaults/{id}/flags` — current adjudication result, recomputed from scratch on every event write
 - `GET /api/vaults/{id}/deadlines` — statutory clocks started so far (currently just the deposit-return clock)
 - `GET /api/statutes` — verified rules only (draft rules never serialize out; see `statutes_loader.StatuteTable.verified_rules`)
-- `GET /api/vaults/{id}/rtc-check` — Right to Counsel zip lookup (`app/rtc.py`), shared with the agent stub's handoff
+- `GET /api/vaults/{id}/rtc-check` — Right to Counsel zip lookup (`app/rtc.py`), shared with the agent's refusal handoff
 - `POST /api/vaults/by-share-token/{token}/acknowledge` — counterparty one-click ack; first click wins, sets `Vault.acknowledged_at` once and is idempotent after that
 - `GET /api/vaults/{id}/evidence` — server-rendered, print-to-PDF-friendly HTML evidence packet (`app/evidence.py`); no JS, no external assets, chronological with citations
-- `POST /api/vaults/{id}/ask` — **stub**: always returns a refusal + RTC/hotline handoff, since no grounded retrieval exists yet. Do not make this "helpful" by having it answer from model knowledge — that violates the agent's core constraint in `PLAN.md`. Replace it with real grounding, not a shortcut.
+- `POST /api/vaults/{id}/ask` — the grounded agent (`app/agent.py`). Live-verified: refuses on ungroundable questions, refuses on "will I win in court"-style legal conclusions, and answers with a citation when the vault/statute data actually supports it. See the Agent section below for how refusal is enforced in code, not just prompted.
 - `POST /api/vaults/{id}/documents` (multipart), `GET /api/vaults/{id}/documents/{event_id}` — real file upload/download, backing `document_upload` events. See below.
 
 ## Document uploads (`app/documents.py`, `app/routers/documents.py`)
@@ -91,9 +104,8 @@ tracker, and the agent are four thin entry points onto one engine.
   `content_disposition_type="attachment"` is load-bearing — never switch an
   uploaded file to inline serving, since a stored .txt/.pdf rendered inline
   under this origin is a stored-content risk.
-- Creates a `document_upload` `VaultEvent` with empty `facts` — this is the
-  storage half of "extract"; turning the file into facts is still the
-  deferred LLM extractor (see below).
+- Creates a `document_upload` `VaultEvent`, then hands the stored file to
+  the extractor (see below), which fills in `facts` on success.
 
 ## Front end (`static/`)
 
@@ -141,19 +153,31 @@ statute conditions reference — see the "cheap interfaces" note in `PLAN.md`.
   it, so the rule can only ever fire from manually-entered facts.
 - `extract_facts_from_file` (`app/extractor.py`) isolates every
   Gemini-specific call behind one function, using `google-genai`'s
-  "Interactions API" (`client.interactions.create`). The request/response
-  shape (content blocks, `response_format`, `interaction.output_text`) was
-  checked directly against the **installed SDK's own type definitions**
-  (`_gaos/types/interactions/*.py`) — an initial pass wired against a
-  web-doc summary and got the shape wrong in three places (`response_format`
-  nesting, content-block field names, and using manual base64 instead of
-  passing a `Path` straight through), all caught by reading the actual
-  installed package source instead of trusting the summary. So the wire
-  shape should be right. **What's still unverified is an actual live call**
-  — no `GEMINI_API_KEY` was available while building this, including
-  whether `GEMINI_MODEL` (`gemini-3.8-flash`) is a real, currently-served
-  model id; that part came from web search, not package introspection.
-  Check the model id first if this errors for real.
+  "Interactions API" (`client.interactions.create`). **Live-verified**: a
+  plain-text notice mentioning an expired rental license, no Certificate of
+  Rental Suitability, and a $2,400 deposit (2.5 months' rent, year one)
+  correctly extracted `deposit_amount`, `deposit_months`, `tenancy_year`,
+  `landlord_rental_license_valid`, and `certificate_of_rental_suitability_provided`
+  — which then correctly fired all four matching flags via the normal
+  upload → extract → adjudicate flow, no test-only shortcuts.
+- **`response_format` must be passed alone — do NOT also pass
+  `response_mime_type`.** That param is marked `deprecated` in the SDK's own
+  source and passing it triggers a legacy validation path that rejects the
+  request with `"responseFormat must be set when responseMimeType is set"`
+  even though `response_format` *was* set. Caught by a live 400 during
+  development; cost real API calls to isolate. If a future SDK upgrade
+  reintroduces a `response_mime_type`-shaped API, re-verify against the
+  installed package source before using it — see the same lesson in
+  `app/agent.py`.
+- The request/response shape (content blocks, `response_format`,
+  `interaction.output_text`) was checked directly against the **installed
+  SDK's own type definitions** (`_gaos/types/interactions/*.py`), not
+  documentation — a first pass based on a web-doc summary got three things
+  wrong (the `response_mime_type` issue above, content-block field names,
+  and manual base64 instead of passing a `Path` straight through). If
+  something here ever seems to contradict Gemini's public docs, trust the
+  installed package's source over the docs, and trust a live error over
+  both.
 - `.txt` uploads are sent as an inline text block, not as a "document"
   content block — `DocumentContentMimeType` only recognizes
   `application/pdf` and `text/csv`. `.docx` has no mapping at all and
@@ -168,9 +192,36 @@ statute conditions reference — see the "cheap interfaces" note in `PLAN.md`.
 - On successful extraction, the router writes the facts onto the event and
   calls `adjudicate_vault` immediately — no separate "run extraction" step.
 
-Not implemented yet: the real grounded agent (`/ask` still always refuses —
-see the agent section above). The extractor is wired but its first live-key
-test is still pending.
+## Grounded agent (`app/agent.py`)
+
+- **The model's own `grounded: true` claim is never trusted on its own.**
+  `ask_agent` independently checks the model's `citation_value` against this
+  vault's actual event ids and the statute table's actual citations
+  (`_verify_citation`) before ever returning an answer; an unverifiable
+  citation is downgraded to a refusal regardless of what the model said.
+  This is what makes grounding structural (PLAN.md: "enforced structurally
+  ... not by prompt instruction alone") rather than a request. Test it via
+  `tests/test_agent.py::test_ask_with_fabricated_citation_is_refused_despite_model_claiming_grounded`
+  — this is the single most important test in this codebase to keep green.
+- `_build_context` passes through **every field of every verified rule**,
+  not a fixed subset — an earlier version only forwarded `id`/`citation`/
+  `detail`/`framing`, which silently broke PLAN.md's own flagship demo
+  question ("how long does he have to return my deposit") because
+  `deposit_return_clock` keeps its actual content in `clock`/`on_expiry`/
+  `requires`, not `detail`. Caught live, against that exact question, before
+  being caught by a reviewer or a judge. If a future rule shape adds a new
+  field, it's already included — don't reintroduce a subset.
+- Context also includes this vault's full timeline + current flags/deadlines,
+  filtered to the asking party's framing (`message_tenant` vs
+  `message_landlord`, and each rule's `party_framing[party]`) — the same
+  underlying fact, one framing at a time, matching the party-neutral design.
+- Live-verified refusals: a question with no supporting vault event ("when
+  did I first report the leak" with no such event) and a legal-conclusion
+  question ("will I win in court") both correctly refuse with a
+  PhillyTenant.org/hotline handoff.
+- Same fail-safe pattern as extraction: no key, any model-call exception, or
+  a failed-verification citation all produce the same safe refusal+handoff
+  response — never a 500, never a guess.
 
 ## `statutes.yaml` conventions
 
