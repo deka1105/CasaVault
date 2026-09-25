@@ -439,6 +439,21 @@ function renderEvents(events) {
   );
 }
 
+/* Property-management systems export names like
+ * "Form__CITY_OF_PHILADELPHIA_BED_BUG_BROCHURE__A_GUIDE_TO_BED_BUG_SAFETY_-_Lease_5_12_2026_to_8_11_2027.pdf".
+ * Strip the boilerplate prefix and the repeated lease-term suffix, which are
+ * identical across every file in a bundle and carry no information. */
+function shortenFilename(name, max = 42) {
+  let short = String(name)
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/^Form_+/i, "")
+    .replace(/[_-]+Lease[_ ]\d.*$/i, "")
+    .replace(/_+/g, " ")
+    .trim();
+  if (!short) short = name;
+  return short.length > max ? `${short.slice(0, max - 1)}…` : short;
+}
+
 /* One event can hold many files — a real lease is ~25. Files the extractor
  * skipped are labelled, so the timeline never implies a document was read
  * when it was only stored. */
