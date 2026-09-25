@@ -20,7 +20,7 @@ from app.extractor import (
 )
 from app.models import Vault, VaultEvent
 from app.rules_engine import adjudicate_vault
-from app.schemas import DocumentUploadRead, ExtractionInfo
+from app.schemas import DocumentUploadRead, EventRead, ExtractionInfo
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,15 @@ async def upload_document(
     if facts:
         adjudicate_vault(vault_id, session, request.app.state.statutes)
 
-    return DocumentUploadRead(**event.model_dump(), extraction=extraction)
+    # model_validate(..., from_attributes=True) rather than
+    # event.model_dump(): on a refreshed SQLModel row, model_dump() omits
+    # attributes SQLAlchemy has expired and never had explicitly set, so
+    # fields like `notes` went missing and failed validation. Going through
+    # attribute access triggers the load.
+    return DocumentUploadRead(
+        **EventRead.model_validate(event, from_attributes=True).model_dump(),
+        extraction=extraction,
+    )
 
 
 def build_document_response(vault_id: str, event_id: int, session: Session) -> Response:
