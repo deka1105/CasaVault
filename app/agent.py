@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -15,6 +16,47 @@ logger = logging.getLogger(__name__)
 class AgentUnavailable(RuntimeError):
     """No LLM key configured. Callers should fall back to the safe refusal
     stub — see app/routers/agent.py."""
+
+
+class AgentUpstreamError(RuntimeError):
+    """The model provider could not be reached (503/429/timeout), as opposed
+    to the agent declining to answer.
+
+    Both outcomes are safe — neither ever produces a guess — but they are not
+    the same thing, and conflating them is actively misleading here: a
+    refusal is this product's designed behaviour (PLAN.md: "That last
+    refusal goes in the demo video. It is the point."), while an upstream
+    outage is a fault. Showing "I can't ground that in your vault" when the
+    truth is "Gemini returned 503" teaches the user to distrust a refusal
+    that was working exactly as intended.
+    """
+
+
+# Substrings that mark a provider-side failure worth retrying, matched against
+# the exception text rather than a class: google-genai raises these from
+# private _gaos.* modules whose paths are not a stable API to import against.
+_TRANSIENT_MARKERS = (
+    "503",
+    "429",
+    "500",
+    "service_unavailable",
+    "unavailable",
+    "high demand",
+    "rate limit",
+    "ratelimit",
+    "resource_exhausted",
+    "quota",
+    "overloaded",
+    "timeout",
+    "timed out",
+    "deadline",
+    "connection",
+)
+
+
+def _looks_transient(exc: Exception) -> bool:
+    text = f"{getattr(exc, 'code', '')} {getattr(exc, 'status_code', '')} {exc}".lower()
+    return any(marker in text for marker in _TRANSIENT_MARKERS)
 
 
 class GroundedAnswer(BaseModel):
@@ -127,6 +169,29 @@ def _call_model(question: str, party: str, context: dict[str, Any]) -> GroundedA
     return GroundedAnswer.model_validate_json(interaction.output_text)
 
 
+def _call_model_with_retry(
+    question: str, party: str, context: dict[str, Any], attempts: int = 3
+) -> GroundedAnswer:
+    """One transient 503 from the provider should not become a refusal the
+    user reads as the agent's own judgement. Retries only provider-side
+    failures; a schema/validation error is raised immediately, since retrying
+    it would just burn quota for the same result."""
+    delay = 1.5
+    for attempt in range(attempts):
+        try:
+            return _call_model(question, party, context)
+        except Exception as exc:
+            if not _looks_transient(exc):
+                raise
+            if attempt == attempts - 1:
+                logger.warning("agent model call failed after %d attempts: %s", attempts, exc)
+                raise AgentUpstreamError(str(exc)) from exc
+            logger.info("transient model failure (attempt %d/%d): %s", attempt + 1, attempts, exc)
+            time.sleep(delay)
+            delay *= 2
+    raise AgentUpstreamError("model call exhausted retries")  # unreachable, kept for type-checkers
+
+
 def _verify_citation(candidate: GroundedAnswer, context: dict[str, Any]) -> bool:
     if candidate.citation_type == "statute":
         return any(s["citation"] == candidate.citation_value for s in context["statutes"])
@@ -147,7 +212,7 @@ def ask_agent(question: str, party: str, vault_id: str, session: Session, table:
         raise AgentUnavailable("GEMINI_API_KEY is not configured")
 
     context = _build_context(vault_id, session, table, party)
-    candidate = _call_model(question, party, context)
+    candidate = _call_model_with_retry(question, party, context)
 
     if not candidate.grounded or not candidate.answer or not candidate.citation_value:
         return AgentResult(

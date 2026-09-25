@@ -104,3 +104,6 @@ class AskResponse(BaseModel):
     citation: Optional[str] = None
     refusal: Optional[str] = None
     handoff: Optional[dict[str, Any]] = None
+    # True when the agent could not reach the model at all, as opposed to
+    # declining to answer. Both are refusals to guess; only one is a fault.
+    unavailable: bool = False
