@@ -84,6 +84,7 @@ class Incident(SQLModel, table=True):
     impact: Optional[str] = None
 
     management_email: Optional[str] = None
+    insurance_email: Optional[str] = None
     event_id: Optional[int] = Field(default=None, foreign_key="vaultevent.id")
     created_at: datetime = Field(default_factory=_now)
 
