@@ -77,7 +77,14 @@ def test_flags_recompute_across_events_not_just_the_latest_one():
         vault_id = _make_vault(client)
         client.post(
             f"/api/vaults/{vault_id}/events",
-            json={"event_type": "document_upload", "occurred_at": "2026-01-01", "facts": {"deposit_amount": 500}},
+            json={
+                "event_type": "document_upload",
+                "occurred_at": "2026-01-01",
+                # deposit_escrow_required is a two-part test: over $100 AND no
+                # bank disclosed. Both facts come from this first event, so
+                # the flag surviving the second event is still what's checked.
+                "facts": {"deposit_amount": 500, "deposit_bank_disclosed": False},
+            },
         )
         client.post(
             f"/api/vaults/{vault_id}/events",
