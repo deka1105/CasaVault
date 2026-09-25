@@ -143,38 +143,3 @@ def _resolve(node: ast.AST, facts: dict[str, Any]) -> Any:
     if isinstance(node, ast.Constant):
         return node.value
     raise UnsafeConditionError(f"unsupported operand: {ast.dump(node)}")
-
-
-def _eval_node(node: ast.AST, facts: dict[str, Any]) -> Any:
-    if isinstance(node, ast.BoolOp):
-        values = [_eval_node(v, facts) for v in node.values]
-        if isinstance(node.op, ast.And):
-            return all(values)
-        if isinstance(node.op, ast.Or):
-            return any(values)
-        raise UnsafeConditionError(f"unsupported boolean operator in: {ast.dump(node)}")
-
-    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
-        return not _eval_node(node.operand, facts)
-
-    if isinstance(node, ast.Compare):
-        left = _eval_node(node.left, facts)
-        for op, comparator in zip(node.ops, node.comparators):
-            op_fn = _COMPARISONS.get(type(op))
-            if op_fn is None:
-                raise UnsafeConditionError(f"unsupported comparison operator: {op}")
-            right = _eval_node(comparator, facts)
-            if left is None or right is None:
-                return False
-            if not op_fn(left, right):
-                return False
-            left = right
-        return True
-
-    if isinstance(node, ast.Name):
-        return facts.get(node.id)
-
-    if isinstance(node, ast.Constant):
-        return node.value
-
-    raise UnsafeConditionError(f"unsupported expression: {ast.dump(node)}")
