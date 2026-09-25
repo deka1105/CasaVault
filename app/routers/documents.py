@@ -88,6 +88,28 @@ def _content_disposition(filename: str) -> str:
     return f'attachment; filename="{safe}"'
 
 
+def _decide_triage(filename: str, manifest: Optional[str], index: Optional[int]) -> triage.TriageDecision:
+    """Whether to spend a model request on this file.
+
+    The client sends the whole batch's filename list with every request plus
+    this file's position in it, so the decision stays deterministic and
+    stateless while still being made across the batch — which is the only
+    level it makes sense at, since whether to read the ninth addendum depends
+    on what the first eight already cost. A lone upload with no manifest is
+    always read: the user picked one file deliberately.
+    """
+    if not manifest or index is None:
+        return triage.TriageDecision(triage.PRIORITY, True, "Read — uploaded on its own.")
+    try:
+        names = json.loads(manifest)
+        if not isinstance(names, list) or not (0 <= index < len(names)):
+            raise ValueError("manifest/index mismatch")
+    except (ValueError, TypeError):
+        logger.info("unusable upload manifest; reading this file on its own merits")
+        return triage.TriageDecision(triage.PRIORITY, True, "Read — uploaded on its own.")
+    return triage.plan([str(n) for n in names])[index]
+
+
 @router.post("", response_model=DocumentUploadRead)
 async def upload_document(
     vault_id: str,
@@ -95,14 +117,25 @@ async def upload_document(
     file: UploadFile = File(...),
     occurred_at: date = Form(...),
     notes: Optional[str] = Form(None),
+    event_id: Optional[int] = Form(None),
+    event_type: str = Form("document_upload"),
+    manifest: Optional[str] = Form(None),
+    index: Optional[int] = Form(None),
     session: Session = Depends(get_session),
 ):
     """Stores the file (locally, or on Vercel Blob if BLOB_READ_WRITE_TOKEN
     is set — see app/storage.py), then runs it through the schema-bound
     extractor and adjudicates the vault if that produced any facts.
-    Extraction is best-effort: no configured key, an unsupported file type,
-    or an API error all fall back to an empty facts dict rather than
-    failing the upload — the document is safely stored either way."""
+
+    Pass `event_id` to attach this file to an event a previous call created,
+    which is how a multi-document lease becomes ONE timeline entry instead of
+    twenty-five. Each file is still its own request because Vercel caps a
+    function's request body at 4.5MB, so a 8.8MB bundle cannot arrive at once.
+
+    Extraction is best-effort and, for a batch, selective: see app/triage.py
+    for why reading all 25 files of a real lease is not an option against a
+    20-request daily quota. The document is safely stored either way.
+    """
     _require_vault(vault_id, session)
 
     try:
@@ -123,43 +156,72 @@ async def upload_document(
     content = b"".join(chunks)
 
     temp_path = storage.save_temp(vault_id, name, content)
+    decision = _decide_triage(file.filename or "", manifest, index)
 
-    # One dispatch point for every way reading a document can fail. Each
-    # outcome stores the document and leaves facts empty — extraction is
-    # strictly best-effort — but each says something different to the user,
-    # because "this document stated nothing we track" and "the daily model
-    # quota ran out" look identical from an empty facts dict, and the second
-    # one reads as a broken product during a demo.
     facts = None
-    try:
-        facts = extract_facts_from_file(temp_path)
-        extraction = ExtractionInfo(
-            status="ok" if facts else "no_facts",
-            message=None if facts else "The document was read, but it stated none of the facts this vault tracks.",
-        )
-    except Exception as raw:
-        # classify() is applied here as well as inside the extractor so a
-        # provider error raised from any path lands in the right bucket,
-        # rather than only the ones the extractor itself wrapped.
-        exc = classify_extraction_error(raw)
-        status, message, log = _EXTRACTION_OUTCOMES.get(type(exc), _EXTRACTION_OUTCOMES[None])
-        log(logger, vault_id, exc)
-        extraction = ExtractionInfo(status=status, message=message)
+    if not decision.extract:
+        extraction = ExtractionInfo(status="not_read", message=decision.reason)
+    else:
+        # One dispatch point for every way reading a document can fail. Each
+        # outcome stores the document and leaves facts empty — extraction is
+        # strictly best-effort — but each says something different to the
+        # user, because "this document stated nothing we track" and "the
+        # daily model quota ran out" look identical from an empty facts dict,
+        # and the second one reads as a broken product during a demo.
+        try:
+            facts = extract_facts_from_file(temp_path)
+            extraction = ExtractionInfo(
+                status="ok" if facts else "no_facts",
+                message=None if facts else "The document was read, but it stated none of the facts this vault tracks.",
+            )
+        except Exception as raw:
+            # classify() is applied here as well as inside the extractor so a
+            # provider error raised from any path lands in the right bucket,
+            # rather than only the ones the extractor itself wrapped.
+            exc = classify_extraction_error(raw)
+            status, message, log = _EXTRACTION_OUTCOMES.get(type(exc), _EXTRACTION_OUTCOMES[None])
+            log(logger, vault_id, exc)
+            extraction = ExtractionInfo(status=status, message=message)
 
     storage_ref = storage.persist(temp_path, vault_id)
+    display_name = Path(file.filename).name if file.filename else None
 
-    event = VaultEvent(
-        vault_id=vault_id,
-        event_type="document_upload",
-        occurred_at=occurred_at,
-        facts=facts or {},
-        source_document_ref=storage_ref,
-        original_filename=Path(file.filename).name if file.filename else None,
-        notes=notes,
-    )
-    session.add(event)
+    if event_id is None:
+        event = VaultEvent(
+            vault_id=vault_id,
+            event_type=event_type,
+            occurred_at=occurred_at,
+            facts=facts or {},
+            source_document_ref=storage_ref,
+            original_filename=display_name,
+            notes=notes,
+        )
+        session.add(event)
+    else:
+        event = session.get(VaultEvent, event_id)
+        if event is None or event.vault_id != vault_id:
+            raise HTTPException(status_code=404, detail="event not found")
+        if facts:
+            # Later files in a bundle refine what earlier ones said; the
+            # rules engine already merges facts across events the same way.
+            event.facts = {**(event.facts or {}), **facts}
+        session.add(event)
+
     session.commit()
     session.refresh(event)
+
+    session.add(
+        VaultDocument(
+            vault_id=vault_id,
+            event_id=event.id,
+            storage_ref=storage_ref,
+            original_filename=display_name,
+            triage_category=decision.category,
+            extraction_status=extraction.status,
+            extraction_note=extraction.message,
+        )
+    )
+    session.commit()
 
     if facts:
         adjudicate_vault(vault_id, session, request.app.state.statutes)
