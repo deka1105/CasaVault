@@ -3,14 +3,7 @@
 <script>
 document.getElementById("f").onload = () => setTimeout(() => {
   const d = document.getElementById("f").contentDocument;
-  const out = [];
-  const grab = (sel) => {
-    const n = d.querySelector(sel);
-    if (!n) return out.push(sel + ": MISSING");
-    const r = n.getBoundingClientRect(), cs = getComputedStyle(n);
-    out.push(`${sel}: w=${Math.round(r.width)} maxW=${cs.maxWidth} padL=${cs.paddingLeft} cols=${cs.gridTemplateColumns}`);
-  };
-  ["#landing .home-hero", "#landing .page-wide", ".home-points", ".home-points li"].forEach(grab);
-  document.title = out.join(" ;; ");
+  const g = d.querySelector(".home-points"), cs = getComputedStyle(g);
+  document.title = `grid w=${Math.round(g.getBoundingClientRect().width)} cols=${cs.gridTemplateColumns}`;
 }, 2200);
 </script>

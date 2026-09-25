@@ -820,13 +820,21 @@ a.brand { text-decoration: none; color: inherit; }
 .btn-lg { font-size: 0.97rem; padding: 0.78rem 1.4rem; }
 .home-note { font-size: 0.86rem; color: var(--ink-faint); margin: 0; }
 
+/* .page ul caps body lists at 65ch for readability, which is right for
+   prose and wrong for a card grid — it squeezed three cards into two
+   columns with dead space beside them. Card lists opt out of both the
+   measure cap and the list indent. */
+.home-points, .steps {
+  max-width: none;
+  padding-left: 0;
+  list-style: none;
+}
+
 .home-points {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   margin: 0;
-  padding: 0;
-  list-style: none;
 }
 .home-points li {
   background: var(--surface);
@@ -845,7 +853,7 @@ a.brand { text-decoration: none; color: inherit; }
 
 /* --- content pages ------------------------------------------------------ */
 
-.steps { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1rem; }
+.steps { margin: 1.5rem 0 0; display: grid; gap: 1rem; }
 .steps li {
   display: grid;
   grid-template-columns: 2rem 1fr;
