@@ -72,6 +72,30 @@ class EventRead(BaseModel):
     original_filename: Optional[str] = None
 
 
+class ExtractionInfo(BaseModel):
+    """Why an upload's facts look the way they do.
+
+    Computed per-request and never persisted, so this needed no new model
+    field (and therefore no manual ALTER TABLE against the live database —
+    see the SQLModel migration note in CLAUDE.md). `status` is one of:
+    ok, no_facts, not_configured, unsupported_type, rate_limited,
+    upstream_error, failed.
+    """
+
+    status: str
+    message: Optional[str] = None
+
+
+class DocumentUploadRead(EventRead):
+    """EventRead plus the extraction outcome. The document is always stored
+    regardless — extraction is strictly best-effort on top of that — but a
+    document that produced zero facts because the daily model quota ran out
+    is not the same as one that genuinely stated none, and the UI cannot tell
+    those apart from an empty dict alone."""
+
+    extraction: ExtractionInfo
+
+
 class FlagRead(BaseModel):
     id: int
     statute_id: str

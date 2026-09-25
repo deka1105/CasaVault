@@ -11,10 +11,16 @@ from sqlmodel import Session
 from app import storage
 from app.database import get_session
 from app.documents import MAX_UPLOAD_BYTES, UploadRejected, stored_filename
-from app.extractor import ExtractionUnavailable, ExtractionUnsupported, extract_facts_from_file
+from app.extractor import (
+    ExtractionRateLimited,
+    ExtractionUnavailable,
+    ExtractionUnsupported,
+    ExtractionUpstreamError,
+    extract_facts_from_file,
+)
 from app.models import Vault, VaultEvent
 from app.rules_engine import adjudicate_vault
-from app.schemas import EventRead
+from app.schemas import DocumentUploadRead, ExtractionInfo
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +41,7 @@ def _content_disposition(filename: str) -> str:
     return f'attachment; filename="{safe}"'
 
 
-@router.post("", response_model=EventRead)
+@router.post("", response_model=DocumentUploadRead)
 async def upload_document(
     vault_id: str,
     request: Request,
@@ -73,14 +79,45 @@ async def upload_document(
 
     try:
         facts = extract_facts_from_file(temp_path)
+        extraction = ExtractionInfo(
+            status="ok" if facts else "no_facts",
+            message=None if facts else "The document was read, but it stated none of the facts this vault tracks.",
+        )
     except ExtractionUnavailable:
-        facts = None  # no key configured — expected in dev, not an error
+        # No key configured — expected in dev, not an error.
+        facts = None
+        extraction = ExtractionInfo(
+            status="not_configured",
+            message="Automatic reading is not configured on this deployment. The document is stored; enter any known facts by hand.",
+        )
     except ExtractionUnsupported as exc:
         logger.info("skipping extraction for event in vault %s: %s", vault_id, exc)
         facts = None
+        extraction = ExtractionInfo(
+            status="unsupported_type",
+            message="This file type can't be read automatically. It is stored, and you can log its facts by hand.",
+        )
+    except ExtractionRateLimited as exc:
+        logger.warning("extraction hit the provider quota for vault %s: %s", vault_id, exc)
+        facts = None
+        extraction = ExtractionInfo(
+            status="rate_limited",
+            message="The daily limit for automatic document reading has been reached. Your document is stored — add its facts by hand, or try again tomorrow.",
+        )
+    except ExtractionUpstreamError as exc:
+        logger.warning("extraction upstream failure for vault %s: %s", vault_id, exc)
+        facts = None
+        extraction = ExtractionInfo(
+            status="upstream_error",
+            message="The document reader was temporarily unreachable. Your document is stored — try re-uploading shortly, or add its facts by hand.",
+        )
     except Exception:
         logger.exception("extraction failed for an upload in vault %s", vault_id)
         facts = None
+        extraction = ExtractionInfo(
+            status="failed",
+            message="The document couldn't be read automatically. It is stored — add its facts by hand.",
+        )
 
     storage_ref = storage.persist(temp_path, vault_id)
 
@@ -100,7 +137,7 @@ async def upload_document(
     if facts:
         adjudicate_vault(vault_id, session, request.app.state.statutes)
 
-    return event
+    return DocumentUploadRead(**event.model_dump(), extraction=extraction)
 
 
 def build_document_response(vault_id: str, event_id: int, session: Session) -> Response:
