@@ -50,6 +50,14 @@ class ExtractedFacts(BaseModel):
     lockout_or_utility_shutoff: Optional[bool] = Field(
         None, description="Whether the document describes a lockout or utility shutoff used against the tenant"
     )
+    deposit_bank_disclosed: Optional[bool] = Field(
+        None,
+        description=(
+            "Whether the document states the name AND address of the banking institution "
+            "holding the security deposit. True only if an actual bank name/address is "
+            "written in; false if the field is present but left blank."
+        ),
+    )
     forwarding_address_provided: Optional[bool] = Field(
         None, description="Whether the tenant provided a written forwarding address at move-out"
     )
