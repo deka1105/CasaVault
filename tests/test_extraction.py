@@ -4,10 +4,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from app import documents
 from app.config import UPLOADS_DIR
 from app.extraction_schema import ExtractedFacts
 from app.extractor import ExtractionUnsupported, _content_block_for_file
 from app.main import app
+from app.routers import documents as documents_router
 
 
 @pytest.fixture(autouse=True)
