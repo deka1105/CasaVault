@@ -842,14 +842,46 @@ function setUploadProgress(text) {
  * still has to be told which of "the document stated nothing we track" and
  * "the daily reading limit ran out" happened, or an empty facts column looks
  * like the product is broken. */
-function reportExtraction(info) {
+function reportExtraction(results) {
   const note = $("upload-result");
-  if (!info || info.status === "ok") {
+  if (!results || !results.length) {
     note.hidden = true;
     return;
   }
-  note.className = info.status === "no_facts" ? "banner" : "banner banner-caution";
-  note.textContent = info.message || "The document was stored, but no facts were read from it.";
+
+  const read = results.filter((r) => r.extraction.status === "ok");
+  const notRead = results.filter((r) => r.extraction.status === "not_read");
+  const problems = results.filter(
+    (r) => !["ok", "no_facts", "not_read"].includes(r.extraction.status)
+  );
+
+  note.className = problems.length ? "banner banner-caution" : "banner";
+  const lines = [
+    el("strong", {
+      text: `${results.length} file${results.length === 1 ? "" : "s"} stored. `,
+    }),
+    `${read.length} read for facts` + (notRead.length ? `, ${notRead.length} stored without reading.` : "."),
+  ];
+
+  if (notRead.length) {
+    // Never silently skip: say which files were not read and why, or the
+    // record looks more thoroughly examined than it actually was.
+    lines.push(
+      el("details", { class: "upload-detail" }, [
+        el("summary", {}, `Which ${notRead.length} weren't read`),
+        el(
+          "ul",
+          {},
+          notRead.map((r) => el("li", { text: `${r.name} — ${r.extraction.message || ""}` }))
+        ),
+      ])
+    );
+  }
+  if (problems.length) {
+    lines.push(el("p", { class: "upload-problem", text: problems[0].extraction.message || "" }));
+  }
+
+  replaceChildren(note, lines);
   note.hidden = false;
 }
 
