@@ -831,6 +831,8 @@ function setupIncidentForm() {
         el("div", { class: "draft-preview", style: "margin-top: 0.75rem" }, [
           el("div", { class: "field-label", text: "To" }),
           el("div", { text: draft.to || "(no email provided)" }),
+          draft.cc ? el("div", { class: "field-label", style: "margin-top: 0.5rem", text: "CC (insurance)" }) : null,
+          draft.cc ? el("div", { text: draft.cc }) : null,
           el("div", { class: "field-label", style: "margin-top: 0.5rem", text: "Subject" }),
           el("div", { style: "font-weight: 600", text: draft.subject }),
           el("div", { class: "field-label", style: "margin-top: 0.5rem", text: "Body" }),
