@@ -959,7 +959,10 @@ const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 function setupEventForm() {
   $("event-type").addEventListener("change", updateEventFormMode);
-  $("upload-hint").textContent = `PDF, JPG, PNG, HEIC or TXT, up to ${MAX_UPLOAD_BYTES / 1024 / 1024}MB. It is read and adjudicated on upload.`;
+  $("upload-hint").textContent =
+    `Select as many files as you like — a whole lease bundle files as one entry. ` +
+    `PDF, JPG, PNG, HEIC or TXT, up to ${MAX_UPLOAD_BYTES / 1024 / 1024}MB each. ` +
+    `The documents that carry your terms are read automatically; the rest are stored.`;
 
   $("event-form").addEventListener("submit", async (e) => {
     e.preventDefault();
