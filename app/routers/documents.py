@@ -238,22 +238,33 @@ async def upload_document(
     )
 
 
-def build_document_response(vault_id: str, event_id: int, session: Session) -> Response:
+def build_document_response(vault_id: str, document_id: int, session: Session) -> Response:
     """Shared by the owner route below and the token-addressed read-only
     route in app/routers/share.py, so both download paths enforce the same
-    vault-scoping check and the same attachment-only serving rules."""
-    event = session.get(VaultEvent, event_id)
-    if event is None or event.vault_id != vault_id or not event.source_document_ref:
-        raise HTTPException(status_code=404, detail="document not found")
+    vault-scoping check and the same attachment-only serving rules.
 
-    content = storage.read(event.source_document_ref)
+    Resolves a VaultDocument id first, then falls back to treating the id as
+    a VaultEvent id. The fallback keeps links in evidence packets printed
+    before multi-document events existed — and rows written by that older
+    code path — resolving instead of 404ing.
+    """
+    document = session.get(VaultDocument, document_id)
+    if document is not None and document.vault_id == vault_id:
+        storage_ref, display_name = document.storage_ref, document.original_filename
+    else:
+        event = session.get(VaultEvent, document_id)
+        if event is None or event.vault_id != vault_id or not event.source_document_ref:
+            raise HTTPException(status_code=404, detail="document not found")
+        storage_ref, display_name = event.source_document_ref, event.original_filename
+
+    content = storage.read(storage_ref)
     if content is None:
         raise HTTPException(status_code=404, detail="document not found")
 
     # Always served as an attachment, from bytes read through app/storage.py
     # regardless of backend: an uploaded .txt/.pdf served inline under this
     # origin would otherwise be a stored-content risk in the browser.
-    download_name = event.original_filename or Path(event.source_document_ref).name
+    download_name = display_name or Path(storage_ref).name
     return Response(
         content=content,
         media_type="application/octet-stream",
