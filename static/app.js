@@ -103,7 +103,7 @@ function renderFlags(flags) {
     flags
       .map((f) => {
         const message = state.party === "landlord" ? f.message_landlord : f.message_tenant;
-        return `<tr class="severity-${f.severity}"><td>${f.severity}</td><td>${message || f.statute_id}</td><td>${f.citation}</td></tr>`;
+        return `<tr class="severity-${f.severity}"><td><span class="severity-badge">${f.severity}</span></td><td>${message || f.statute_id}</td><td>${f.citation}</td></tr>`;
       })
       .join("") || "<tr><td colspan='3'><em>No flags yet.</em></td></tr>";
 }
