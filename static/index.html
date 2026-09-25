@@ -329,5 +329,18 @@
   </main>
 
   <script src="/app.js"></script>
+  <script>
+  window.addEventListener("load", () => setTimeout(() => {
+    const vw = document.documentElement.clientWidth;
+    const bad = [];
+    document.querySelectorAll("*").forEach((n) => {
+      const r = n.getBoundingClientRect();
+      if (r.width > 0 && (r.right > vw + 1 || r.left < -1)) {
+        bad.push(`${n.tagName}.${n.className||"(none)"}#${n.id||"-"} w=${Math.round(r.width)} L=${Math.round(r.left)} R=${Math.round(r.right)}`);
+      }
+    });
+    document.title = "VW=" + vw + " scrollW=" + document.documentElement.scrollWidth + " || " + bad.slice(0, 14).join(" || ");
+  }, 2500));
+  </script>
 </body>
 </html>
