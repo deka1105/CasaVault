@@ -20,8 +20,14 @@ rendered server data through `innerHTML` (stored XSS reachable by the
 counterparty); every date displayed one day early west of UTC, including
 statutory deadlines; the grounded agent had **no UI at all** despite being
 the flagship feature; and `pytest -q` as documented did not run. All fixed,
-67 tests green. Still pending a human: an actual Clerk sign-in
-click-through (bug #3) and a real Philadelphia lease end to end.
+**Sep 25, later**: tested against the user's own 25-PDF Philadelphia lease
+and rebuilt around what that exposed — three-state adjudication
+(flagged / no issue / needs facts), document triage, and multi-document
+uploads that file a whole lease bundle as one timeline entry. 77 tests
+green. Still pending a human: an actual Clerk sign-in click-through (bug
+#3) and a **live extraction against the real lease, which is blocked on
+the Gemini quota upgrade** — the plumbing is verified end to end with
+extraction stubbed, and the real PDF returns a clean `rate_limited`.
 
 This is a hackathon build (LexHack 2026) with a hard submission deadline of **Sun Sep
 27, 2026, 5:00 PM EDT** — read `PLAN.md`'s build-order table before starting
@@ -48,7 +54,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 uvicorn app.main:app --reload   # dev server, http://127.0.0.1:8000
-pytest -q                       # full test suite (67 tests)
+pytest -q                       # full test suite (77 tests)
 pytest -q -k test_name          # single test
 ```
 
