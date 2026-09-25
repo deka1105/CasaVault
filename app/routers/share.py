@@ -144,10 +144,10 @@ def evidence_packet(
     )
 
 
-@router.get("/documents/{event_id}")
-def download_document(share_token: str, event_id: int, session: Session = Depends(get_session)) -> Response:
+@router.get("/documents/{document_id}")
+def download_document(share_token: str, document_id: int, session: Session = Depends(get_session)) -> Response:
     vault = _require_vault(share_token, session)
-    return build_document_response(vault.id, event_id, session)
+    return build_document_response(vault.id, document_id, session)
 
 
 def _group_documents(documents) -> dict[int, list]:
