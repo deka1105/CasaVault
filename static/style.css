@@ -30,6 +30,11 @@ body {
   max-width: 760px;
   margin: 0 auto;
   padding: 2rem 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -37,6 +42,40 @@ body {
   align-items: baseline;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.auth-area {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+#my-vaults {
+  margin-bottom: 1.25rem;
+}
+
+#my-vaults h2 {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+
+#my-vaults-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+#my-vaults-list a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+#my-vaults-list a:hover {
+  text-decoration: underline;
 }
 
 .brand-mark {
@@ -61,6 +100,10 @@ main {
   border-radius: var(--radius);
   padding: 1.75rem;
   box-shadow: 0 1px 3px rgba(20, 16, 8, 0.04);
+}
+
+.card + .card {
+  margin-top: 1.25rem;
 }
 
 .landing-card h1 {
