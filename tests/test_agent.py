@@ -122,3 +122,73 @@ def test_ask_survives_model_call_raising(monkeypatch):
     body = res.json()
     assert body["answer"] is None
     assert body["refusal"]
+
+
+# --- upstream failures must not masquerade as principled refusals --------
+
+def test_transient_upstream_failure_is_retried_then_reported_as_unavailable(monkeypatch):
+    """A 503 from the provider used to surface as "the agent isn't configured
+    yet" — a refusal the user reads as the agent's own judgement. It is a
+    fault, and must say so, while still never guessing."""
+    calls = []
+
+    def boom(*args, **kwargs):
+        calls.append(1)
+        raise RuntimeError("Error code: 503 - gemini is currently experiencing high demand")
+
+    monkeypatch.setattr(agent, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(agent, "_call_model", boom)
+    monkeypatch.setattr(agent.time, "sleep", lambda _s: None)
+
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={"zip_code": "19121"}).json()
+        res = client.post(f"/api/vaults/{vault['id']}/ask", json={"question": "anything"})
+
+    assert res.status_code == 200
+    body = res.json()
+    assert len(calls) == 3, "transient provider errors should be retried"
+    assert body["answer"] is None
+    assert body["unavailable"] is True
+    assert "couldn't reach" in body["refusal"]
+    assert body["handoff"]["route"] == "hotline"
+
+
+def test_a_grounded_refusal_is_not_marked_unavailable(monkeypatch):
+    """The designed refusal must stay visibly distinct from a fault."""
+    monkeypatch.setattr(agent, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(
+        agent,
+        "_call_model",
+        lambda *a, **k: agent.GroundedAnswer(grounded=False, answer=None, citation_type=None, citation_value=None),
+    )
+
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={"zip_code": "19107"}).json()
+        res = client.post(f"/api/vaults/{vault['id']}/ask", json={"question": "will I win in court"})
+
+    body = res.json()
+    assert body["unavailable"] is False
+    assert body["answer"] is None
+    assert body["refusal"]
+    assert body["handoff"]["route"] == "phillytenant_org"
+
+
+def test_non_transient_error_is_not_retried(monkeypatch):
+    """Retrying a schema/validation failure just burns quota for the same
+    result, and quota is the scarce resource here."""
+    calls = []
+
+    def boom(*args, **kwargs):
+        calls.append(1)
+        raise ValueError("response failed schema validation")
+
+    monkeypatch.setattr(agent, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(agent, "_call_model", boom)
+
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={}).json()
+        res = client.post(f"/api/vaults/{vault['id']}/ask", json={"question": "anything"})
+
+    assert len(calls) == 1
+    assert res.json()["unavailable"] is True
+    assert res.json()["answer"] is None
