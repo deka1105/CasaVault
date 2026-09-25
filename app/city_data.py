@@ -117,10 +117,11 @@ def normalize_address(raw: str) -> str:
     Philadelphia-specific — do not generalize it to other cities.
     """
     text = (raw or "").upper().strip()
-    text = _UNIT_PATTERN.sub("", text)
-    # Drop anything after a comma (city/state/zip) — the City matches on the
-    # street address alone.
+    # Drop city/state/zip FIRST: the unit pattern is anchored to the end of the
+    # string, so "200 Spring Garden St #213, Philadelphia, PA" would otherwise
+    # keep its unit number and never match a building-level licence row.
     text = text.split(",")[0]
+    text = _UNIT_PATTERN.sub("", text)
     text = re.sub(r"[^\w\s-]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
 

@@ -14,6 +14,80 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class Property(SQLModel, table=True):
+    """An address. The thing a record attaches to, the way a CARFAX report
+    attaches to a VIN rather than to an owner.
+
+    `address_normalized` is the join key — the building-level form produced by
+    app/city_data.py:normalize_address, which strips the unit because a
+    Philadelphia rental licence is issued to the property, not the apartment.
+    `address_display` keeps what the user actually typed, unit included.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    address_normalized: str = Field(index=True, unique=True)
+    address_display: str
+    zip_code: Optional[str] = None
+    created_at: datetime = Field(default_factory=_now)
+
+
+class PropertyLink(SQLModel, table=True):
+    """Which vault covers which address, and for what period.
+
+    Deliberately a join table rather than a `Vault.property_id` column:
+    SQLModel.metadata.create_all() creates tables that don't exist but never
+    alters existing ones, so a new column on `vault` would need a manual
+    ALTER TABLE against the live Neon database (see CLAUDE.md). A new table
+    needs none. It is also the truthful shape — one address has many
+    tenancies over time, which is the whole point of a record that outlives
+    its occupants.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    vault_id: str = Field(foreign_key="vault.id", index=True)
+    property_id: int = Field(foreign_key="property.id", index=True)
+    unit: Optional[str] = None
+    moved_in: Optional[date] = None
+    moved_out: Optional[date] = None
+    created_at: datetime = Field(default_factory=_now)
+
+
+class Incident(SQLModel, table=True):
+    """Something that went wrong, and the lifecycle of getting it fixed.
+
+    The four timestamps are the work-order history: reported → acknowledged →
+    started → resolved. `reported_at` is the valuable one, because the
+    accompanying email gives it provenance outside this app: a send time, a
+    named recipient, and a copy in the resident's own mailbox. Written notice
+    is load-bearing under PA and Philadelphia law, so this is the difference
+    between a diary entry and evidence that notice was given.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    vault_id: str = Field(foreign_key="vault.id", index=True)
+    property_id: Optional[int] = Field(default=None, foreign_key="property.id", index=True)
+    reference_code: str = Field(index=True)
+
+    category: str
+    urgency: str
+    summary: str
+    detail: Optional[str] = None
+    # Habitability: heat, water, electricity or security being affected
+    # changes both the urgency and which law applies.
+    affects_essential_service: bool = False
+    previously_reported: bool = False
+
+    reported_at: Optional[date] = None
+    acknowledged_at: Optional[date] = None
+    work_started_at: Optional[date] = None
+    resolved_at: Optional[date] = None
+    impact: Optional[str] = None
+
+    management_email: Optional[str] = None
+    event_id: Optional[int] = Field(default=None, foreign_key="vaultevent.id")
+    created_at: datetime = Field(default_factory=_now)
+
+
 class Vault(SQLModel, table=True):
     """One vault per tenancy. The id and share_token remain the actual
     access control (PLAN.md: 'Single vault, no signup') — owner_user_id is
