@@ -450,32 +450,90 @@ function renderEvents(events) {
   );
 }
 
-function framingFor(flag) {
-  const primary = state.party === "landlord" ? flag.message_landlord : flag.message_tenant;
-  return primary || flag.message_tenant || flag.message_landlord || flag.statute_id;
-}
-
-function renderFindings(flags) {
+/* Three states, not one list.
+ *
+ * A compliant lease fires no rules at all, so a panel that showed only
+ * failures rendered empty — which reads as "this product did nothing" rather
+ * than as the genuinely useful result that nothing is wrong. Verified against
+ * a real 25-document Philadelphia lease, which produces zero flags.
+ *
+ * "No issue found" is deliberately not "compliant": a rule can also be
+ * definitively false because it does not apply yet (the year-two deposit cap
+ * during year one). The product must not assert compliance it cannot prove.
+ */
+function renderAdjudication(report) {
   const list = $("findings-list");
-  if (!flags.length) {
-    replaceChildren(
-      list,
-      el("li", { class: "empty", text: "No findings yet. Upload a lease or record what you know and the rules engine runs automatically." })
-    );
-    return;
-  }
-  const order = { violation: 0, caution: 1 };
-  const sorted = [...flags].sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9));
-  replaceChildren(
-    list,
-    sorted.map((f) =>
-      el("li", { class: `finding finding-${f.severity}` }, [
-        el("div", { class: "finding-head" }, el("span", { class: "badge", text: f.severity })),
-        el("p", { class: "finding-body", text: framingFor(f) }),
-        el("span", { class: "cite", text: f.citation }),
-      ])
-    )
+  const c = report.counts;
+
+  const summary = el("li", { class: "tally" }, [
+    el("span", {}, [el("strong", { text: String(c.checked) }), " rules checked"]),
+    el("span", { class: "tally-flag", text: `${c.flagged} flagged` }),
+    el("span", { class: "tally-ok", text: `${c.passed} no issue` }),
+    el("span", { class: "tally-unknown", text: `${c.unknown} need facts` }),
+  ]);
+
+  const flagged = report.flagged.map((f) =>
+    el("li", { class: `finding finding-${f.severity}` }, [
+      el("div", { class: "finding-head" }, el("span", { class: "badge", text: f.severity })),
+      el("p", { class: "finding-body", text: f.message || f.requirement || f.statute_id }),
+      el("span", { class: "cite", text: f.citation }),
+    ])
   );
+
+  const nothingRecorded = !c.flagged && !c.passed;
+  const clear =
+    !c.flagged && c.passed
+      ? el("li", { class: "finding finding-clear" }, [
+          el("div", { class: "finding-head" }, el("span", { class: "badge", text: "no findings" })),
+          el("p", {
+            class: "finding-body",
+            text:
+              "Nothing in this record breaks a rule in the statute table. That is itself a " +
+              "result — it is what the evidence packet will show.",
+          }),
+        ])
+      : nothingRecorded
+        ? el("li", {
+            class: "empty",
+            text: "Nothing recorded yet. Upload your lease or fill in what you know, and the rules engine runs automatically.",
+          })
+        : null;
+
+  const group = (items, label, cls, open, body) =>
+    items.length
+      ? el("li", {}, [
+          el("details", { class: `rule-group ${cls}`, open: open || null }, [
+            el("summary", {}, `${label} (${items.length})`),
+            el("ul", { class: "rule-list" }, items.map(body)),
+          ]),
+        ])
+      : null;
+
+  const passedGroup = group(report.passed, "No issue found", "group-ok", false, (e) =>
+    el("li", { class: "rule-row" }, [
+      el("span", { class: "rule-mark mark-ok", text: "✓" }),
+      el("div", { class: "rule-body" }, [
+        el("div", { text: e.requirement || e.statute_id }),
+        el("span", { class: "cite", text: e.citation }),
+      ]),
+    ])
+  );
+
+  // Open by default: these are the ones the user can actually act on, and
+  // `no_rental_license` — the most common successful defense in Philadelphia
+  // landlord-tenant court — lands here on every lease, because no lease states it.
+  const unknownGroup = group(report.unknown, "Needs facts you haven't recorded", "group-unknown", true, (e) =>
+    el("li", { class: "rule-row" }, [
+      el("span", { class: "rule-mark mark-unknown", text: "?" }),
+      el("div", { class: "rule-body" }, [
+        el("div", { text: e.requirement || e.statute_id }),
+        e.next_step ? el("p", { class: "next-step", text: e.next_step }) : null,
+        el("span", { class: "cite", text: e.citation }),
+      ]),
+    ])
+  );
+
+  replaceChildren(list, [summary, clear, ...flagged, passedGroup, unknownGroup].filter(Boolean));
 }
 
 function renderDeadlines(deadlines) {
