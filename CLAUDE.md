@@ -111,6 +111,51 @@ tracker, and the agent are four thin entry points onto one engine.
   app doesn't break on Vercel — see the Vercel deployment section below for
   why and how.
 
+## Deploying to Vercel
+
+The original stack (SQLite file + local `uploads/` disk directory) breaks on
+Vercel's ephemeral Functions — nothing guarantees either survives a cold
+start or redeploy. Fixed by making both swappable, not by rearchitecting:
+
+- **Database**: `app/database.py` uses SQLite locally (`connect_args`
+  applied only when `DATABASE_URL` starts with `sqlite`) and Postgres in
+  production. Chosen over Turso (SQLite-hosted) specifically because SQLite
+  is single-writer even hosted, a real risk under concurrent serverless
+  invocations — Postgres has none of that, and Neon has first-party Vercel
+  Marketplace provisioning. **Use Neon's pooled (`-pooler` hostname)
+  connection string**, and note `poolclass=NullPool` is set for non-SQLite —
+  Neon's pooler already runs PgBouncer in front of Postgres, so SQLAlchemy's
+  own pooling on top would just be a redundant second pool.
+- **File storage**: `app/storage.py` picks a backend by whether
+  `BLOB_READ_WRITE_TOKEN` is set — local disk if not (dev/test default, zero
+  external credentials needed), Vercel Blob if so. Storage refs are prefixed
+  (`blob:...` vs a bare relative path) so `read()`/`delete()` never have to
+  guess which backend wrote a given ref. Uses the **official `vercel` PyPI
+  package** (`vercel.blob` — `put`/`get`/`delete`), confirmed to exist and
+  inspected directly from its installed source and README (not just a doc
+  summary) after an initial web search surfaced a plausible-looking but
+  wrong REST endpoint shape. Uploads use `access="private"` and
+  `add_random_suffix=False` (the app already generates a unique name).
+  `extract_facts_from_file` needed **zero changes** — the upload handler
+  still writes the file to a local path first (`storage.save_temp`, which is
+  `UPLOADS_DIR`/`/tmp` depending on environment) for the extractor to read,
+  and only *then* persists the durable copy (`storage.persist`).
+- **Runtime**: no rewrite needed. Vercel's own FastAPI docs confirm
+  `app/main.py` exporting `app` is a directly supported zero-config
+  entrypoint (no `api/index.py` wrapper), and — importantly — that an
+  `app.mount(..., StaticFiles(...))` call is **automatically promoted to CDN
+  serving** at build time, provided routes declared before it still reach
+  the function. `app/main.py` already does exactly this (API routes
+  registered, then the static mount last), so **the front end needs zero
+  changes** for Vercel either. `vercel.json` only sets `maxDuration: 120`
+  as an explicit safety margin — Fluid Compute's 300s default already
+  covers every Gemini call timed this session (~90s max).
+- **Not yet done**: actual provisioning (Neon + Blob store creation, `vercel
+  link`), and a live preview-deployment smoke test. This needs the user's
+  Vercel account/team, so it wasn't done unattended. Full plan, sequencing,
+  and rationale for every choice above:
+  `~/.claude/plans/jaunty-sniffing-ullman.md`.
+
 ## Front end (`static/`)
 
 Plain HTML/JS, single page, no build step. `app.js` drives everything off
