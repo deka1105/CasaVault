@@ -153,7 +153,23 @@ function setupOpenVault() {
 function updateEventFormMode() {
   const isUpload = qs("event-type").value === "document_upload";
   qs("event-file-label").hidden = !isUpload;
-  qs("event-facts-label").hidden = isUpload;
+  qs("facts-fields").hidden = isUpload;
+  qs("advanced-facts").hidden = isUpload;
+}
+
+function collectStructuredFacts() {
+  const facts = {};
+  document.querySelectorAll('#facts-fields [name^="fact:"]').forEach((input) => {
+    const key = input.name.slice("fact:".length);
+    const raw = input.value;
+    if (raw === "") return; // not stated — omit rather than assert a value
+    if (input.dataset.factType === "number") {
+      facts[key] = Number(raw);
+    } else {
+      facts[key] = raw === "true";
+    }
+  });
+  return facts;
 }
 
 async function uploadDocument() {
@@ -173,10 +189,10 @@ async function uploadDocument() {
 }
 
 async function createJsonEvent() {
-  let facts = {};
-  const raw = qs("event-facts").value.trim();
-  if (raw) {
-    facts = JSON.parse(raw); // caller catches malformed JSON
+  const facts = collectStructuredFacts();
+  const advancedRaw = qs("event-facts-advanced").value.trim();
+  if (advancedRaw) {
+    Object.assign(facts, JSON.parse(advancedRaw)); // caller catches malformed JSON
   }
   await api(`/api/vaults/${state.vaultId}/events`, {
     method: "POST",
