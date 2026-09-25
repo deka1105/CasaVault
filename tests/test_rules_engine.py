@@ -119,3 +119,45 @@ def test_move_out_without_forwarding_address_does_not_start_clock():
         )
         deadlines = client.get(f"/api/vaults/{vault_id}/deadlines").json()
     assert deadlines == []
+
+
+def test_every_verified_rule_carries_both_party_framings():
+    """A flag with no framing for the asking party used to render as its raw
+    rule id ("deposit_escrow_required") in the UI, the evidence packet and
+    the agent's context. Every verified rule must read as a sentence from
+    both sides — PLAN.md: 'one rule, two framings'."""
+    table = load_statute_table(STATUTES_PATH)
+    for rule in table.verified_rules:
+        framing = rule.get("party_framing") or {}
+        assert framing.get("tenant"), f"{rule['id']} has no tenant framing"
+        assert framing.get("landlord"), f"{rule['id']} has no landlord framing"
+
+
+def test_every_verified_rule_carries_a_citation():
+    """Hard product constraint (CLAUDE.md non-negotiables): no uncited legal
+    conclusion may reach a user."""
+    table = load_statute_table(STATUTES_PATH)
+    for rule in table.verified_rules:
+        assert rule.get("citation"), f"{rule['id']} has no citation"
+
+
+def test_deposit_clock_is_not_duplicated_by_a_repeated_move_out():
+    """Deadlines accumulate (unlike flags, which adjudicate_vault rebuilds
+    from scratch), so re-recording a move-out used to show the same
+    statutory deadline twice."""
+    table = load_statute_table(STATUTES_PATH)
+    with TestClient(app) as client:
+        vault = client.post("/api/vaults", json={"label": "dupe check"}).json()
+        payload = {
+            "event_type": "move_out",
+            "occurred_at": "2026-08-01",
+            "facts": {"forwarding_address_provided": True},
+        }
+        client.post(f"/api/vaults/{vault['id']}/events", json=payload)
+        client.post(f"/api/vaults/{vault['id']}/events", json=payload)
+
+        deadlines = client.get(f"/api/vaults/{vault['id']}/deadlines").json()
+
+    assert len(deadlines) == 1
+    assert deadlines[0]["due_date"] == "2026-08-31"
+    assert table.get_rule("deposit_return_clock")["citation"] == "68 P.S. § 250.512"
