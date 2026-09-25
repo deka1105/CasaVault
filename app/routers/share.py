@@ -24,7 +24,7 @@ from app.database import get_session
 from app.evidence import render_evidence_packet
 from app.models import Deadline, Flag, Vault, VaultEvent
 from app.routers.documents import build_document_response
-from app.rules_engine import describe_deadline
+from app.rules_engine import build_adjudication_report, describe_deadline
 from app.rtc import handoff_for_zip
 from app.schemas import DeadlineRead, EventRead, FlagRead, Party, VaultShareRead
 
@@ -93,6 +93,17 @@ def list_deadlines(
         )
         for d in deadlines
     ]
+
+
+@router.get("/adjudication")
+def get_adjudication(
+    share_token: str,
+    request: Request,
+    party: Party = Query("landlord"),
+    session: Session = Depends(get_session),
+):
+    vault = _require_vault(share_token, session)
+    return build_adjudication_report(vault.id, session, request.app.state.statutes, party)
 
 
 @router.get("/rtc-check")

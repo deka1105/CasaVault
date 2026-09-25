@@ -3,7 +3,12 @@ from sqlmodel import Session, select
 
 from app.database import get_session
 from app.models import Deadline, Flag, Vault, VaultEvent
-from app.rules_engine import adjudicate_vault, compute_deadlines_for_event, describe_deadline
+from app.rules_engine import (
+    adjudicate_vault,
+    build_adjudication_report,
+    compute_deadlines_for_event,
+    describe_deadline,
+)
 from app.schemas import DeadlineRead, EventCreate, EventRead, FlagRead, Party
 
 router = APIRouter(prefix="/api/vaults/{vault_id}", tags=["events"])
@@ -72,3 +77,18 @@ def list_deadlines(
         )
         for d in deadlines
     ]
+
+
+@router.get("/adjudication")
+def get_adjudication(
+    vault_id: str,
+    request: Request,
+    party: Party = Query("tenant"),
+    session: Session = Depends(get_session),
+):
+    """The full picture: what fired, what is affirmatively satisfied, and what
+    can't be judged yet for lack of facts. `/flags` stays as-is — it is what
+    the evidence packet and the agent read — but a user needs all three
+    states, not only the failures. See rules_engine.build_adjudication_report."""
+    _require_vault(vault_id, session)
+    return build_adjudication_report(vault_id, session, request.app.state.statutes, party)
