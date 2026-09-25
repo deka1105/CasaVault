@@ -115,7 +115,21 @@ def _framing(flag: Flag, party: str) -> str:
     return primary or secondary or flag.statute_id
 
 
-def _document_link(document_base: str, event: VaultEvent) -> str:
+def _document_link(document_base: str, event: VaultEvent, documents: dict[int, list] | None = None) -> str:
+    """Every file attached to the event, not just one.
+
+    A real lease is ~25 documents filed under a single 'lease signed' entry,
+    and an evidence packet that listed one of them would misrepresent the
+    record it exists to prove. Files the extractor deliberately skipped are
+    marked, so the packet never implies a document was read when it wasn't.
+    """
+    attached = (documents or {}).get(event.id) or []
+    if attached:
+        return "<br>".join(
+            f'<a href="{_esc(document_base)}/{d.id}">{_esc(d.original_filename or "view")}</a>'
+            + ("" if d.extraction_status not in ("not_read", "skipped") else " <em>(stored, not read)</em>")
+            for d in attached
+        )
     if not event.source_document_ref:
         return ""
     label = _esc(event.original_filename or "view")
