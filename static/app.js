@@ -787,6 +787,11 @@ async function loadIncidents() {
 function setupIncidentForm() {
   $("incident-date").valueAsDate = new Date();
 
+  $("incident-cc-insurance").addEventListener("change", (e) => {
+    $("incident-insurance-field").hidden = !e.target.checked;
+    if (!e.target.checked) $("incident-insurance-email").value = "";
+  });
+
   $("incident-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const errorEl = $("incident-error");
@@ -807,6 +812,7 @@ function setupIncidentForm() {
         previously_reported: $("incident-repeat").checked,
         reported_at: $("incident-date").value || null,
         management_email: $("incident-email").value.trim() || null,
+        insurance_email: $("incident-cc-insurance").checked ? ($("incident-insurance-email").value.trim() || null) : null,
         reporter_name: $("incident-name").value.trim() || null,
       };
 
