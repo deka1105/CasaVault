@@ -85,32 +85,27 @@
       </div>
 
       <div class="page home-section" id="start">
-        <h2 style="margin-top: 0;">Start your record</h2>
+        <h2 style="margin-top: 0;">Look up an address</h2>
         <p>
-          You'll get a private link. Keep that link and you keep access — there's no password
-          to forget. Signing in is optional, and only makes your records easier to find later.
+          Start with the place, not the paperwork. We'll show you what the City has on
+          record for it — and if anyone has kept a record here before, what happened.
         </p>
         <div class="home-start">
           <section class="card">
-            <form id="create-vault-form">
-              <div class="field-row-group">
-                <label class="field field-grow">
-                  <span>Name it (optional)</span>
-                  <input id="new-vault-label" type="text" placeholder="e.g. 123 Elm St, Apt 2" autocomplete="off">
-                </label>
-                <label class="field">
-                  <span>Zip code</span>
-                  <input id="new-vault-zip" type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="19121" autocomplete="postal-code">
-                </label>
-              </div>
-              <p class="hint" style="margin: -0.4rem 0 0.9rem; color: var(--ink-faint); font-size: 0.8rem;">
-                Your zip code tells us whether you can get a free lawyer in eviction court.
+            <form id="address-form">
+              <label class="field">
+                <span>Address</span>
+                <input id="address-input" type="text" placeholder="e.g. 4047 Spring Garden Street"
+                       autocomplete="street-address" required>
+              </label>
+              <p class="hint" style="margin: 0.5rem 0 0.9rem; color: var(--ink-faint); font-size: 0.8rem;">
+                Philadelphia addresses only for now. You don't need to sign in to look one up.
               </p>
-              <button type="submit" class="btn btn-primary">Create my record</button>
+              <button type="submit" class="btn btn-primary">Look it up</button>
             </form>
-            <p id="create-error" class="error" hidden></p>
+            <p id="address-error" class="error" hidden></p>
 
-            <div class="divider"><span>or open one you already have</span></div>
+            <div class="divider"><span>or open a record you already have</span></div>
 
             <form id="open-vault-form" class="inline-form">
               <input id="open-vault-id" type="text" placeholder="paste your link or code" autocomplete="off" aria-label="Your record link or code">
