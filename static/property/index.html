@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Address record — CasaVault</title>
+  <meta name="description" content="What the City has on record for a Philadelphia address — rental licence status and open violations — plus repair history kept by residents.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A0%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14141a" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="brand-mark">CasaVault</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/">Home</a>
+      <a href="/how-it-works/">How it works</a>
+      <a href="/what-we-check/">What we check</a>
+      <a href="/about/">About &amp; limits</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-secondary btn-small" href="/#start">Search</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <form id="address-form" class="inline-form" style="margin-bottom: 1.75rem;">
+      <input id="address-input" type="text" placeholder="Look up another address"
+             autocomplete="street-address" aria-label="Address">
+      <button type="submit" class="btn btn-secondary">Look it up</button>
+    </form>
+
+    <p class="eyebrow">Address record</p>
+    <h1 id="address-title">Looking that up…</h1>
+    <p class="home-note" id="address-sub"></p>
+
+    <p id="lookup-error" class="error" hidden></p>
+
+    <section id="city-section" hidden>
+      <h2>What the City has on record</h2>
+      <p>
+        Philadelphia publishes rental licences and code violations. This comes straight from
+        those records — it doesn't depend on anyone here telling us the truth.
+      </p>
+      <div id="city-summary"></div>
+      <div id="city-detail"></div>
+      <p class="home-note" id="city-source"></p>
+    </section>
+
+    <section id="history-section" hidden>
+      <h2>Repair history</h2>
+      <p id="history-intro"></p>
+      <div class="table-wrap">
+        <table id="history-table">
+          <thead>
+            <tr><th>Reported</th><th>Issue</th><th>Urgency</th><th>Work started</th><th>Resolved</th><th class="num">Days</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="start-section" hidden>
+      <h2>Keep your own record here</h2>
+      <p>
+        Add your lease, log what happens, and report problems in writing. What you add is
+        private to you — nothing above comes from anyone's documents.
+      </p>
+      <div class="card" style="max-width: 560px;">
+        <form id="create-record-form">
+          <div class="field-row-group">
+            <label class="field">
+              <span>Unit (optional)</span>
+              <input id="record-unit" type="text" placeholder="e.g. #213" autocomplete="off">
+            </label>
+            <label class="field">
+              <span>Zip code</span>
+              <input id="record-zip" type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="19123" autocomplete="postal-code">
+            </label>
+          </div>
+          <p class="hint" style="margin: -0.4rem 0 0.9rem; color: var(--ink-faint); font-size: 0.8rem;">
+            Your zip code tells us whether you can get a free lawyer in eviction court.
+          </p>
+          <button type="submit" class="btn btn-primary">Start my record here</button>
+        </form>
+        <p id="create-error" class="error" hidden></p>
+      </div>
+    </section>
+
+    <div class="next-page">
+      <a class="btn btn-secondary" href="/what-we-check/">What we check</a>
+      <a class="btn btn-secondary" href="/about/">About &amp; limits</a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Footer">
+        <a href="/">Home</a>
+        <a href="/how-it-works/">How it works</a>
+        <a href="/what-we-check/">What we check</a>
+        <a href="/about/">About &amp; limits</a>
+      </nav>
+      <p>
+        CasaVault gives information about your rights. It is not legal advice, and using it
+        does not make us your lawyer. For advice about your own situation, call the Philly
+        Tenant Hotline on (267) 443-2500 or visit PhillyTenant.org.
+      </p>
+    </div>
+  </footer>
+
+  <script src="/property.js"></script>
+</body>
+</html>
