@@ -706,6 +706,23 @@ async function uploadDocument() {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `${res.status} ${res.statusText}`);
   }
+  return res.json();
+}
+
+/* The document is always stored; reading it is best-effort on top. So an
+ * upload that extracted nothing is a success, not an error — but the user
+ * still has to be told which of "the document stated nothing we track" and
+ * "the daily reading limit ran out" happened, or an empty facts column looks
+ * like the product is broken. */
+function reportExtraction(info) {
+  const note = $("upload-result");
+  if (!info || info.status === "ok") {
+    note.hidden = true;
+    return;
+  }
+  note.className = info.status === "no_facts" ? "banner" : "banner banner-caution";
+  note.textContent = info.message || "The document was stored, but no facts were read from it.";
+  note.hidden = false;
 }
 
 async function createJsonEvent() {
@@ -743,7 +760,7 @@ function setupEventForm() {
     btn.textContent = isUpload ? "Reading document…" : "Saving…";
 
     try {
-      if (isUpload) await uploadDocument();
+      if (isUpload) reportExtraction((await uploadDocument()).extraction);
       else await createJsonEvent();
       $("event-form").reset();
       updateEventFormMode();
