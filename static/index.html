@@ -12,15 +12,25 @@
       <span class="brand-mark">CasaVault</span>
       <span class="disclaimer">Rights information, not legal advice.</span>
     </div>
+    <div id="auth-area" class="auth-area" hidden>
+      <button id="sign-in-btn" class="btn btn-secondary btn-small">Sign in</button>
+      <div id="user-button-mount" hidden></div>
+    </div>
   </header>
 
   <main id="app">
+    <section id="my-vaults" class="card" hidden>
+      <h2>Your vaults</h2>
+      <ul id="my-vaults-list"></ul>
+    </section>
+
     <section id="landing" class="card landing-card">
       <h1>A statute-aware record of your tenancy</h1>
       <p class="lede">
         Upload documents, log events, and get flags with citations —
         Philadelphia &amp; PA law, adjudicated deterministically. No account
-        needed: a vault is addressed by its own link.
+        needed: a vault is addressed by its own link. Signing in just makes
+        it easier to find vaults you created — it never gates access.
       </p>
       <button id="create-vault-btn" class="btn btn-primary">Create a demo vault</button>
 
