@@ -18,6 +18,7 @@ def render_evidence_packet(
     party: str = "tenant",
     document_base: str | None = None,
     deadline_descriptions: dict[int, str] | None = None,
+    documents_by_event: dict[int, list] | None = None,
 ) -> str:
     """Renders a single, self-contained, print-to-PDF-friendly HTML page —
     chronological events, then flags with citations, then open deadlines.
@@ -37,7 +38,7 @@ def render_evidence_packet(
         f"<tr><td>{_esc(e.occurred_at)}</td><td>{_esc(e.event_type)}</td>"
         f"<td>{_esc(e.notes or '')}</td>"
         f"<td><pre>{_esc(_format_facts(e.facts))}</pre></td>"
-        f"<td>{_document_link(document_base, e)}</td></tr>"
+        f"<td>{_document_link(document_base, e, documents_by_event)}</td></tr>"
         for e in ordered_events
     ) or "<tr><td colspan='5'><em>No events recorded.</em></td></tr>"
 

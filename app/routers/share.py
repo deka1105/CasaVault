@@ -23,7 +23,7 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.documents import events_with_documents
 from app.evidence import render_evidence_packet
-from app.models import Deadline, Flag, Vault, VaultEvent
+from app.models import Deadline, Flag, Vault, VaultDocument, VaultEvent
 from app.routers.documents import build_document_response
 from app.rules_engine import build_adjudication_report, describe_deadline
 from app.rtc import handoff_for_zip
@@ -123,6 +123,7 @@ def evidence_packet(
     landlord-held vault shares to a tenant."""
     vault = _require_vault(share_token, session)
     events = session.exec(select(VaultEvent).where(VaultEvent.vault_id == vault.id)).all()
+    documents = session.exec(select(VaultDocument).where(VaultDocument.vault_id == vault.id)).all()
     flags = session.exec(select(Flag).where(Flag.vault_id == vault.id)).all()
     deadlines = session.exec(select(Deadline).where(Deadline.vault_id == vault.id)).all()
 
@@ -136,6 +137,7 @@ def evidence_packet(
         # /api/vaults/{vault.id}/documents/... would leak the owner
         # credential straight into the shared packet's HTML.
         document_base=f"/api/vaults/by-share-token/{share_token}/documents",
+        documents_by_event=_group_documents(documents),
         deadline_descriptions={
             d.id: describe_deadline(d, request.app.state.statutes, party) for d in deadlines
         },
@@ -146,3 +148,10 @@ def evidence_packet(
 def download_document(share_token: str, event_id: int, session: Session = Depends(get_session)) -> Response:
     vault = _require_vault(share_token, session)
     return build_document_response(vault.id, event_id, session)
+
+
+def _group_documents(documents) -> dict[int, list]:
+    grouped: dict[int, list] = {}
+    for doc in documents:
+        grouped.setdefault(doc.event_id, []).append(doc)
+    return grouped
