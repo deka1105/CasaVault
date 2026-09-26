@@ -161,11 +161,10 @@ def _build_context(vault_id: str, session: Session, table: StatuteTable, party: 
     }
 
 
-def _call_model(question: str, party: str, context: dict[str, Any]) -> GroundedAnswer:
-    # imported lazily so tests can patch config before the SDK loads
+def _call_model(question: str, party: str, context: dict[str, Any], key_index: int = 0) -> GroundedAnswer:
     from app.gemini_client import build_client
 
-    client = build_client()
+    client = build_client(key_index=key_index)
     interaction = client.interactions.create(
         model=GEMINI_MODEL,
         input=[
@@ -185,27 +184,34 @@ def _call_model(question: str, party: str, context: dict[str, Any]) -> GroundedA
 def _call_model_with_retry(
     question: str, party: str, context: dict[str, Any], attempts: int = 3
 ) -> GroundedAnswer:
-    """One transient 503 from the provider should not become a refusal the
-    user reads as the agent's own judgement. Retries only provider-side
-    failures; a schema/validation error is raised immediately, since retrying
-    it would just burn quota for the same result."""
+    """Retries transient failures and rotates API keys on rate-limit (429).
+    Each free-tier key has its own daily quota, so cycling keys extends the
+    effective limit."""
+    from app.gemini_client import available_key_count
+
+    num_keys = available_key_count()
     delay = 1.5
-    for attempt in range(attempts):
-        try:
-            return _call_model(question, party, context)
-        except Exception as exc:
-            if _is_rate_limit(exc):
-                logger.warning("agent hit the provider quota: %s", exc)
-                raise AgentRateLimited(str(exc)) from exc
-            if not _looks_transient(exc):
-                raise
-            if attempt == attempts - 1:
-                logger.warning("agent model call failed after %d attempts: %s", attempts, exc)
-                raise AgentUpstreamError(str(exc)) from exc
-            logger.info("transient model failure (attempt %d/%d): %s", attempt + 1, attempts, exc)
-            time.sleep(delay)
-            delay *= 2
-    raise AgentUpstreamError("model call exhausted retries")  # unreachable, kept for type-checkers
+    for key_idx in range(num_keys):
+        for attempt in range(attempts):
+            try:
+                return _call_model(question, party, context, key_index=key_idx)
+            except Exception as exc:
+                if _is_rate_limit(exc):
+                    logger.info("agent key %d/%d rate-limited, trying next", key_idx + 1, num_keys)
+                    break  # move to next key
+                if not _looks_transient(exc):
+                    raise
+                if attempt == attempts - 1:
+                    logger.warning("agent model call failed after %d attempts on key %d: %s", attempts, key_idx + 1, exc)
+                    raise AgentUpstreamError(str(exc)) from exc
+                logger.info("transient model failure (attempt %d/%d): %s", attempt + 1, attempts, exc)
+                time.sleep(delay)
+                delay *= 2
+        else:
+            continue
+        continue  # 429 broke inner loop — move to next key
+    logger.warning("agent exhausted all %d API keys", num_keys)
+    raise AgentRateLimited("all API keys exhausted")
 
 
 def _verify_citation(candidate: GroundedAnswer, context: dict[str, Any]) -> bool:
