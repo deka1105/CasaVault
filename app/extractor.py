@@ -14,10 +14,16 @@ _IMAGE_MIME_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image
 
 _EXTRACTION_PROMPT = (
     "You are a document-parsing engine for a tenant/landlord recordkeeping vault. "
-    "Extract only facts explicitly stated in the attached document into the given "
-    "schema. Do not infer, guess, or reach any legal conclusion — a separate "
+    "Extract every fact explicitly stated in the attached document into the given "
+    "schema. This may be a main lease, an addendum, a disclosure, a fee schedule, "
+    "a buy-out agreement, an inventory form, an acknowledgment, an insurance page, "
+    "or any other rental document — read it thoroughly and populate every field that "
+    "the document addresses. Pay special attention to filled-in values in form fields "
+    "(dollar amounts, dates, checked boxes, names, addresses). "
+    "Do not infer, guess, or reach any legal conclusion — a separate "
     "deterministic system decides what any fact means. Leave a field null if the "
-    "document does not state it; never fabricate a value."
+    "document does not state it; never fabricate a value. Use the additional_terms "
+    "field to capture any notable clauses or obligations that don't fit other fields."
 )
 
 
