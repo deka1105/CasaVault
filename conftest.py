@@ -31,13 +31,16 @@ import pytest  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _bypass_auth(monkeypatch):
-    """All tests run as a signed-in user by default. Individual tests can
-    override require_user_id via their own monkeypatch if they need to test
-    the 401 path."""
+def _bypass_auth(request, monkeypatch):
+    """All tests run as a signed-in user by default, except those in
+    test_auth.py which test the real auth paths."""
+    if "test_auth" in request.node.nodeid:
+        yield
+        return
+
     from app.auth import require_user_id  # noqa: F811
 
-    async def _fake_require(request=None):
+    async def _fake_require():
         return "test-user-id"
 
     from app.main import app  # noqa: E402
