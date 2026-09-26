@@ -102,3 +102,48 @@ def get_adjudication(
     states, not only the failures. See rules_engine.build_adjudication_report."""
     _require_vault(vault_id, session)
     return build_adjudication_report(vault_id, session, request.app.state.statutes, party)
+
+
+@router.delete("/events/{event_id}")
+async def delete_event(
+    vault_id: str, event_id: int, request: Request,
+    session: Session = Depends(get_session),
+    _user: str = Depends(require_user_id),
+):
+    """Delete an event within 10 minutes of creation. After that it is
+    permanent — the point of a record is that it can't be quietly erased."""
+    vault = _require_vault(vault_id, session)
+    event = session.get(VaultEvent, event_id)
+    if event is None or event.vault_id != vault_id:
+        raise HTTPException(status_code=404, detail="event not found")
+
+    age = (datetime.now(timezone.utc) - event.recorded_at).total_seconds()
+    if age > DELETE_WINDOW_SECONDS:
+        raise HTTPException(
+            status_code=403,
+            detail="This entry is older than 10 minutes and can no longer be deleted. Contact support if you need it removed.",
+        )
+
+    docs = session.exec(
+        select(VaultDocument).where(VaultDocument.event_id == event_id)
+    ).all()
+    for doc in docs:
+        storage.delete(doc.storage_ref)
+        session.delete(doc)
+
+    if event.source_document_ref:
+        storage.delete(event.source_document_ref)
+
+    flags = session.exec(select(Flag).where(Flag.event_id == event_id)).all()
+    for flag in flags:
+        session.delete(flag)
+    deadlines = session.exec(select(Deadline).where(Deadline.event_id == event_id)).all()
+    for dl in deadlines:
+        session.delete(dl)
+
+    session.delete(event)
+    session.commit()
+
+    adjudicate_vault(vault_id, session, request.app.state.statutes)
+
+    return {"deleted": True, "event_id": event_id}
