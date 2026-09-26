@@ -52,7 +52,7 @@ def test_ask_with_fabricated_citation_is_refused_despite_model_claiming_grounded
     monkeypatch.setattr("app.agent.GEMINI_API_KEY", "test-key")
     monkeypatch.setattr(
         "app.agent._call_model",
-        lambda question, party, context: GroundedAnswer(
+        lambda question, party, context, key_index=0: GroundedAnswer(
             grounded=True,
             answer="You will definitely win your case.",
             citation_type="statute",
@@ -80,7 +80,7 @@ def test_ask_with_verified_vault_event_citation_succeeds(monkeypatch):
 
         monkeypatch.setattr(
             "app.agent._call_model",
-            lambda question, party, context: GroundedAnswer(
+            lambda question, party, context, key_index=0: GroundedAnswer(
                 grounded=True,
                 answer="You first reported it on 2026-03-14.",
                 citation_type="vault_event",
@@ -98,7 +98,7 @@ def test_ask_with_nonexistent_event_id_is_refused(monkeypatch):
     monkeypatch.setattr("app.agent.GEMINI_API_KEY", "test-key")
     monkeypatch.setattr(
         "app.agent._call_model",
-        lambda question, party, context: GroundedAnswer(
+        lambda question, party, context, key_index=0: GroundedAnswer(
             grounded=True, answer="...", citation_type="vault_event", citation_value="999999"
         ),
     )
