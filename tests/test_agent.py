@@ -113,7 +113,7 @@ def test_ask_with_nonexistent_event_id_is_refused(monkeypatch):
 def test_ask_survives_model_call_raising(monkeypatch):
     monkeypatch.setattr("app.agent.GEMINI_API_KEY", "test-key")
 
-    def boom(question, party, context):
+    def boom(question, party, context, key_index=0):
         raise RuntimeError("simulated API outage")
 
     monkeypatch.setattr("app.agent._call_model", boom)
