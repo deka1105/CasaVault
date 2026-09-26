@@ -28,7 +28,7 @@ def test_ask_with_verified_statute_citation_succeeds(monkeypatch):
     monkeypatch.setattr("app.agent.GEMINI_API_KEY", "test-key")
     monkeypatch.setattr(
         "app.agent._call_model",
-        lambda question, party, context: GroundedAnswer(
+        lambda question, party, context, key_index=0: GroundedAnswer(
             grounded=True,
             answer="30 days from move-out, if you gave a forwarding address.",
             citation_type="statute",
