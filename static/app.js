@@ -426,16 +426,38 @@ async function refreshData() {
   }
 }
 
+function canDelete(event) {
+  if (!isOwner()) return false;
+  const age = (Date.now() - new Date(event.recorded_at).getTime()) / 1000;
+  return age < 600;
+}
+
+function deleteMinutesLeft(event) {
+  const age = (Date.now() - new Date(event.recorded_at).getTime()) / 1000;
+  return Math.max(0, Math.ceil((600 - age) / 60));
+}
+
+async function deleteEvent(eventId) {
+  if (!confirm("Delete this entry? This cannot be undone.")) return;
+  try {
+    await api(vaultPath(`/events/${eventId}`), { method: "DELETE" });
+    await refreshData();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
 function renderEvents(events) {
   const tbody = $("events-table").querySelector("tbody");
   if (!events.length) {
-    replaceChildren(tbody, emptyRow(5, "Nothing recorded yet."));
+    replaceChildren(tbody, emptyRow(6, "Nothing recorded yet."));
     return;
   }
   replaceChildren(
     tbody,
     events.map((e) => {
       const facts = Object.entries(e.facts || {});
+      const deletable = canDelete(e);
       return el("tr", {}, [
         el("td", { class: "num", text: formatDate(e.occurred_at) }),
         el("td", {}, el("strong", { text: e.event_type.replace(/_/g, " ") })),
@@ -447,14 +469,18 @@ function renderEvents(events) {
             ? facts.map(([k, v]) => el("div", { class: "cite", text: `${k}: ${v}` }))
             : el("span", {
                 class: "empty",
-                // An uploaded document with no facts means extraction found
-                // nothing (or could not run) — say so, rather than showing
-                // the same blank dash as a hand-logged event that never had
-                // facts to begin with. The document itself is stored either way.
                 text: e.event_type === "document_upload" ? "nothing extracted" : "—",
               })
         ),
         el("td", {}, renderEventDocuments(e)),
+        el("td", {}, deletable
+          ? el("button", {
+              class: "btn btn-danger btn-small",
+              text: `Delete (${deleteMinutesLeft(e)}m left)`,
+              onClick: () => deleteEvent(e.id),
+            })
+          : null
+        ),
       ]);
     })
   );
