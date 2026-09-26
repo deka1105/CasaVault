@@ -340,12 +340,26 @@ async function renderVault() {
   $("vault-mode").textContent = isOwner() ? "You hold this vault" : "Shared with you · read-only";
   $("vault-created").textContent = vault.created_at ? `Opened ${formatDate(vault.created_at)}` : "";
 
+  const signedIn = Boolean(clerk && clerk.user);
   $("owner-controls").hidden = !isOwner();
   $("event-form-section").hidden = !isOwner();
   $("ask-section").hidden = !isOwner();
   $("incident-section").hidden = !isOwner();
   $("city-record-section").hidden = !isOwner();
   $("counterparty-controls").hidden = isOwner();
+
+  if (isOwner()) {
+    const gate = $("signin-gate");
+    if (gate) gate.hidden = signedIn;
+    const form = $("event-form");
+    if (form) {
+      for (const el of form.querySelectorAll("input, select, textarea, button")) el.disabled = !signedIn;
+    }
+    const incForm = $("incident-form");
+    if (incForm) {
+      for (const el of incForm.querySelectorAll("input, select, textarea, button")) el.disabled = !signedIn;
+    }
+  }
 
   if (isOwner()) {
     const shareUrl = `${location.origin}/?share=${encodeURIComponent(vault.share_token)}`;
