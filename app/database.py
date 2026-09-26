@@ -29,10 +29,26 @@ else:
     engine = create_engine(_effective_url, poolclass=NullPool)
 
 
+def _run_migrations() -> None:
+    """One-shot column additions for tables create_all can't alter."""
+    if _is_sqlite:
+        return
+    from sqlalchemy import text
+
+    migrations = [
+        "ALTER TABLE incident ADD COLUMN IF NOT EXISTS insurance_email VARCHAR",
+    ]
+    with engine.connect() as conn:
+        for stmt in migrations:
+            conn.execute(text(stmt))
+        conn.commit()
+
+
 def init_db() -> None:
     from app import models  # noqa: F401 — registers tables on SQLModel.metadata
 
     SQLModel.metadata.create_all(engine)
+    _run_migrations()
 
 
 def get_session():
