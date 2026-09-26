@@ -1,39 +1,37 @@
-"""One place that builds the Gemini client, so timeout and retry policy are
-set identically for extraction and for the agent.
+"""Gemini client with API key rotation.
 
-Why this exists: google-genai retries on its own, and its defaults (verified
-against the installed package's `types.HttpRetryOptions` field docs, not the
-public docs) are 5 attempts with exponential backoff up to 60s per delay, on
-a retryable set that includes 408, 429 and every 5xx.
+Supports multiple comma-separated keys in GEMINI_API_KEY. On a 429 (daily
+quota exhausted), the caller can request the next key via build_client(key_index=N).
+This lets extraction and agent calls cycle through keys before giving up.
 
-That default turned an exhausted daily quota into a 2-minute-19-second hang
-before the 429 surfaced — measured, not estimated. Two things make that bad
-here rather than merely slow:
+SDK retries are disabled — see the original rationale below — and retry
+policy is owned by the application layer (app/agent.py, app/extractor.py).
 
-  * The free tier's cap is a DAILY one. Retrying a 429 cannot clear it, so
-    every one of those retries is guaranteed waste.
-  * Vercel Functions on this project cap at 300s (vercel.json). A single ask
-    burning 140s sits uncomfortably close to that ceiling, and in a live demo
-    a two-minute wait for an error message is indistinguishable from a hang.
-
-So: retries are disabled at the SDK layer and owned by the application, which
-can tell a daily quota apart from a transient 5xx (see app/agent.py). A hard
-timeout is set so no single call can run away.
+Why SDK retries are off: google-genai's defaults (5 attempts, exponential
+backoff up to 60s, retrying 408/429/5xx) turned a daily-quota 429 into a
+2m19s hang. The free tier cap is daily, so retrying cannot clear it.
 """
 
+import logging
 from google.genai import Client, types
 
-from app.config import GEMINI_API_KEY
+from app.config import GEMINI_API_KEYS
 
-# Generous enough for document understanding on a real lease PDF (calls timed
-# at ~90s during development) while still bounded well inside Vercel's 300s.
+logger = logging.getLogger(__name__)
+
 DEFAULT_TIMEOUT_MS = 120_000
-
 _NO_SDK_RETRIES = types.HttpRetryOptions(attempts=1)
 
 
-def build_client(timeout_ms: int = DEFAULT_TIMEOUT_MS) -> Client:
+def available_key_count() -> int:
+    return len(GEMINI_API_KEYS)
+
+
+def build_client(key_index: int = 0, timeout_ms: int = DEFAULT_TIMEOUT_MS) -> Client:
+    if not GEMINI_API_KEYS:
+        raise RuntimeError("No GEMINI_API_KEY configured")
+    idx = key_index % len(GEMINI_API_KEYS)
     return Client(
-        api_key=GEMINI_API_KEY,
+        api_key=GEMINI_API_KEYS[idx],
         http_options=types.HttpOptions(timeout=timeout_ms, retry_options=_NO_SDK_RETRIES),
     )
