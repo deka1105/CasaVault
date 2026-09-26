@@ -260,6 +260,9 @@ function updateAuthUI() {
     }
   }
   void refreshMyVaults();
+  if (signedIn && state.vaultId && !$("vault-view").hidden) {
+    void refreshData();
+  }
 }
 
 async function getAuthHeaders() {
