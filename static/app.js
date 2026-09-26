@@ -91,13 +91,18 @@ function formatDate(value) {
 
 /* --- API ---------------------------------------------------------------- */
 
-async function api(path, opts) {
-  const res = await fetch(path, opts);
+async function api(path, opts = {}) {
+  const authH = await getAuthHeaders();
+  const merged = { ...opts };
+  if (opts.body instanceof FormData) {
+    merged.headers = { ...authH, ...(opts.headers || {}) };
+  } else {
+    merged.headers = { ...authH, ...(opts.headers || {}) };
+  }
+  const res = await fetch(path, merged);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     let detail = body.detail;
-    // FastAPI validation errors arrive as a list of objects; flatten so the
-    // UI never prints "[object Object]" at the user.
     if (Array.isArray(detail)) detail = detail.map((d) => d.msg || String(d)).join("; ");
     throw new Error(detail || `${res.status} ${res.statusText}`);
   }
