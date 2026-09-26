@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import GEMINI_API_KEY, GEMINI_MODEL
-from app.gemini_client import build_client
+from app.gemini_client import available_key_count, build_client
 from app.extraction_schema import ExtractedFacts
 
 # google-genai's DocumentContent/ImageContent types only recognize these
