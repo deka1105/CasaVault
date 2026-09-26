@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import Response
 from sqlmodel import Session
 
+from app.auth import require_user_id
+
 from app import storage, triage
 from app.database import get_session
 from app.documents import MAX_UPLOAD_BYTES, UploadRejected, stored_filename
@@ -123,6 +125,7 @@ async def upload_document(
     manifest: Optional[str] = Form(None),
     index: Optional[int] = Form(None),
     session: Session = Depends(get_session),
+    _user: str = Depends(require_user_id),
 ):
     """Stores the file (locally, or on Vercel Blob if BLOB_READ_WRITE_TOKEN
     is set — see app/storage.py), then runs it through the schema-bound
