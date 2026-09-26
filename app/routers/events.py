@@ -29,8 +29,10 @@ def _require_vault(vault_id: str, session: Session) -> Vault:
 
 
 @router.post("/events", response_model=EventRead)
-def create_event(
-    vault_id: str, payload: EventCreate, request: Request, session: Session = Depends(get_session)
+async def create_event(
+    vault_id: str, payload: EventCreate, request: Request,
+    session: Session = Depends(get_session),
+    _user: str = Depends(require_user_id),
 ):
     _require_vault(vault_id, session)
     event = VaultEvent(vault_id=vault_id, **payload.model_dump())
@@ -46,7 +48,10 @@ def create_event(
 
 
 @router.get("/events", response_model=list[EventRead])
-def list_events(vault_id: str, session: Session = Depends(get_session)):
+async def list_events(
+    vault_id: str, session: Session = Depends(get_session),
+    _user: str = Depends(require_user_id),
+):
     _require_vault(vault_id, session)
     return events_with_documents(vault_id, session)
 
