@@ -1190,6 +1190,10 @@ async function init() {
 
   $("pull-city-btn").addEventListener("click", pullCityRecord);
 
+  // Auth must resolve before loading a vault — events/documents require a
+  // signed-in session, so the token has to be ready before the first API call.
+  await initAuth();
+
   const params = new URLSearchParams(location.search);
   const shareToken = params.get("share");
   const vaultId = params.get("vault");
@@ -1203,9 +1207,6 @@ async function init() {
     showLanding();
     showError($("open-error"), `That link did not resolve to a vault: ${err.message}`);
   }
-
-  // Non-blocking: shouldn't delay first paint of the vault.
-  void initAuth();
 }
 
 init();
