@@ -30,6 +30,7 @@ from urllib.parse import quote, urlencode
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
+from app.auth import require_user_id
 from app.database import get_session
 from app.models import Incident, PropertyLink, Vault, VaultEvent
 from app.schemas import IncidentCreate, IncidentDraft, IncidentRead
@@ -150,10 +151,11 @@ def _address_for(vault: Vault, session: Session) -> str:
 
 
 @router.post("", response_model=IncidentRead)
-def create_incident(
+async def create_incident(
     vault_id: str,
     payload: IncidentCreate,
     session: Session = Depends(get_session),
+    _user: str = Depends(require_user_id),
 ):
     """Record the incident and return a draft for the user to read and send.
 

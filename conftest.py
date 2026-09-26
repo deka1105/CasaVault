@@ -25,3 +25,23 @@ if str(ROOT) not in sys.path:
 _TMP = Path(tempfile.mkdtemp(prefix="casavault-tests-"))
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TMP / 'test.db'}")
 os.environ.setdefault("UPLOADS_DIR", str(_TMP / "uploads"))
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _bypass_auth(monkeypatch):
+    """All tests run as a signed-in user by default. Individual tests can
+    override require_user_id via their own monkeypatch if they need to test
+    the 401 path."""
+    from app.auth import require_user_id  # noqa: F811
+
+    async def _fake_require(request=None):
+        return "test-user-id"
+
+    from app.main import app  # noqa: E402
+
+    app.dependency_overrides[require_user_id] = _fake_require
+    yield
+    app.dependency_overrides.pop(require_user_id, None)
