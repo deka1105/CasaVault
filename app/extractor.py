@@ -91,36 +91,40 @@ def extract_facts_from_file(path: Path) -> dict[str, Any]:
     fields dropped). Raises ExtractionUnavailable / ExtractionUnsupported
     rather than silently returning {} so the caller can log/skip explicitly.
 
-    The request/response shape here (client.interactions.create, the
-    text/document/image content-block dicts, response_format, and
-    interaction.output_text) was checked directly against the installed
-    google-genai package's type definitions (_gaos/types/interactions/*),
-    not just documentation — so the wire shape should be right. What's
-    still unverified is an actual live call: no GEMINI_API_KEY was
-    available while building this, including whether GEMINI_MODEL below
-    is a real, currently-served model id. Check that first if this errors.
+    Rotates through all configured API keys on rate-limit (429) before
+    giving up — each free-tier key has its own 20/day quota.
     """
     if not GEMINI_API_KEY:
         raise ExtractionUnavailable("GEMINI_API_KEY is not configured")
 
     content_block = _content_block_for_file(path)
+    num_keys = available_key_count()
 
-    client = build_client()
-    try:
-        interaction = client.interactions.create(
-            model=GEMINI_MODEL,
-            input=[
-                {"type": "text", "text": _EXTRACTION_PROMPT},
-                content_block,
-            ],
-            response_format={
-                "type": "text",
-                "mime_type": "application/json",
-                "schema": ExtractedFacts.model_json_schema(),
-            },
-        )
-    except Exception as exc:
-        raise classify_extraction_error(exc) from exc
+    for key_idx in range(num_keys):
+        client = build_client(key_index=key_idx)
+        try:
+            interaction = client.interactions.create(
+                model=GEMINI_MODEL,
+                input=[
+                    {"type": "text", "text": _EXTRACTION_PROMPT},
+                    content_block,
+                ],
+                response_format={
+                    "type": "text",
+                    "mime_type": "application/json",
+                    "schema": ExtractedFacts.model_json_schema(),
+                },
+            )
+            facts = ExtractedFacts.model_validate_json(interaction.output_text)
+            return facts.model_dump(exclude_none=True)
+        except Exception as exc:
+            classified = classify_extraction_error(exc)
+            if isinstance(classified, ExtractionRateLimited) and key_idx < num_keys - 1:
+                import logging
+                logging.getLogger(__name__).info(
+                    "extraction key %d/%d rate-limited, trying next", key_idx + 1, num_keys
+                )
+                continue
+            raise classified from exc
 
-    facts = ExtractedFacts.model_validate_json(interaction.output_text)
-    return facts.model_dump(exclude_none=True)
+    raise ExtractionRateLimited("all API keys exhausted")
