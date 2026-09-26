@@ -1,9 +1,12 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, select
 
+from app.auth import require_user_id
 from app.database import get_session
 from app.documents import events_with_documents
-from app.models import Deadline, Flag, Vault, VaultEvent
+from app.models import Deadline, Flag, Vault, VaultDocument, VaultEvent
 from app.rules_engine import (
     adjudicate_vault,
     build_adjudication_report,
@@ -11,8 +14,11 @@ from app.rules_engine import (
     describe_deadline,
 )
 from app.schemas import DeadlineRead, EventCreate, EventRead, FlagRead, Party
+from app import storage
 
 router = APIRouter(prefix="/api/vaults/{vault_id}", tags=["events"])
+
+DELETE_WINDOW_SECONDS = 600
 
 
 def _require_vault(vault_id: str, session: Session) -> Vault:
