@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import Response
 from sqlmodel import Session
 
-from app.auth import require_user_id
+from app.auth import get_optional_user_id
 
 from app import storage, triage
 from app.database import get_session
