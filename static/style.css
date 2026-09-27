@@ -488,6 +488,9 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   border-radius: var(--radius-sm);
   padding: 0.85rem 1rem;
   background: var(--surface-sunk);
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
 }
 .finding-violation, .finding.flagged { border-left-color: var(--violation); background: var(--violation-bg); border-color: var(--violation-line); }
 .finding-caution, .finding.unknown { border-left-color: var(--caution); background: var(--caution-bg); border-color: var(--caution-line); }
@@ -506,6 +509,17 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .finding-violation .badge { background: var(--violation); color: var(--surface); }
 .finding-caution .badge { background: var(--caution); color: var(--surface); }
 .finding-body { margin: 0; font-size: 0.92rem; }
+
+.finding-icon {
+  flex: none;
+  width: 1.6rem; height: 1.6rem;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  font-weight: 700; font-size: 0.85rem;
+  background: var(--violation); color: var(--surface);
+}
+.finding-icon.finding-ok { background: var(--accent); }
+.finding-icon.finding-unknown { background: var(--caution); }
 
 /* --- multi-document uploads --------------------------------------------- */
 
