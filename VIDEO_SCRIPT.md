@@ -20,9 +20,7 @@ Screen: Landing page, casavault.vercel.app
 
 > "First, secure sign-in through Clerk."
 
-**Action:** Click "Sign in" in the header. Complete the Clerk sign-in flow (email/OTP).
 
-Screen: Header updates — username visible, "Your vaults" appears.
 
 > "Your identity is verified, but signing in is optional. Anyone can check
 > a lease or look up an address without an account."
@@ -34,11 +32,6 @@ Screen: Header updates — username visible, "Your vaults" appears.
 > "Let's check a lease — no vault, no account needed. The file is deleted
 > the moment we finish reading it."
 
-**Action:** Click "Check your lease" in the nav.
-
-Screen: Upload page with privacy callout.
-
-**Action:** Upload `04_major_deposit_overcharge_and_waiver_north_philly.pdf`. Wait for extraction.
 
 > "Gemini reads the PDF, extracts the facts, and the rules engine checks
 > every one against 9 verified statutes."
