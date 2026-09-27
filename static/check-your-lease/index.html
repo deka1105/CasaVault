@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Check your lease — CasaVault</title>
+  <meta name="description" content="Upload your lease and find out what Philadelphia and Pennsylvania rental law says about it. Your file is checked and immediately deleted — never stored, never shared.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A0%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14141a" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="brand-mark">CasaVault</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/">Home</a>
+      <a href="/check-your-lease/" aria-current="page">Check your lease</a>
+      <a href="/how-it-works/">How it works</a>
+      <a href="/what-we-check/">What we check</a>
+      <a href="/about/">About &amp; limits</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-secondary btn-small" href="/#start">Start</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <p class="eyebrow">Check your lease</p>
+    <h1>Upload your lease. See what the law says.</h1>
+    <p class="intro">
+      Upload a lease as a PDF, photo or text file. We read it, check it against
+      9 verified rules from Pennsylvania and Philadelphia law, and show you what
+      we find — with the exact statute behind every answer.
+    </p>
+
+    <div class="callout callout-plain">
+      <p>
+        Your file is checked and <strong>immediately deleted</strong>. It is never stored, never
+        shared with anyone, and no account is needed. We keep nothing.
+      </p>
+    </div>
+
+    <!-- Upload area -->
+    <section id="upload-section" class="card" style="max-width: 600px;">
+      <form id="upload-form">
+        <label class="field">
+          <span>Choose your lease</span>
+          <input id="lease-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.txt" required>
+        </label>
+        <p class="hint" style="margin: 0.25rem 0 1rem;">
+          PDF, JPG, PNG or TXT. Up to 4MB.
+        </p>
+        <button id="upload-btn" type="submit" class="btn btn-primary">Check this lease</button>
+      </form>
+      <p id="upload-error" class="error" hidden></p>
+    </section>
+
+    <!-- Loading state -->
+    <section id="loading-section" hidden>
+      <div class="card" style="max-width: 600px; text-align: center; padding: 2rem;">
+        <p style="font-size: 1.1rem; margin: 0 0 0.5rem;">Reading your lease...</p>
+        <p class="hint" style="margin: 0;">This can take 15–20 seconds. Your file is deleted as soon as we finish reading it.</p>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section id="results-section" hidden>
+      <h2 id="results-heading"></h2>
+
+      <div class="grid-2 grid-findings">
+        <section class="card">
+          <div class="section-head">
+            <h2>Findings</h2>
+            <p class="hint">Every one cites the section that produced it</p>
+          </div>
+          <ul id="findings-list" class="finding-list"></ul>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>What we read from your lease</h2>
+            <p class="hint">Facts the rules checked against</p>
+          </div>
+          <div id="facts-summary"></div>
+        </section>
+      </div>
+
+      <div class="card" style="max-width: 600px; margin-top: 1.5rem;">
+        <h2 style="margin-top: 0;">Want to keep a permanent record?</h2>
+        <p>
+          Start a vault to save your lease, track deadlines, report problems in writing,
+          share findings with your landlord, and export an evidence packet for court.
+        </p>
+        <a class="btn btn-primary" href="/#start">Start your vault — it's free</a>
+      </div>
+    </section>
+
+    <p id="general-error" class="error" hidden></p>
+
+    <div class="next-page">
+      <a class="btn btn-secondary" href="/what-we-check/">What we check</a>
+      <a class="btn btn-secondary" href="/about/">About &amp; limits</a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav class="site-nav" aria-label="Footer">
+        <a href="/">Home</a>
+        <a href="/check-your-lease/">Check your lease</a>
+        <a href="/how-it-works/">How it works</a>
+        <a href="/what-we-check/">What we check</a>
+        <a href="/about/">About &amp; limits</a>
+      </nav>
+      <p>
+        CasaVault gives information about your rights. It is not legal advice, and using it
+        does not make us your lawyer. For advice about your own situation, call the Philly
+        Tenant Hotline on (267) 443-2500 or visit PhillyTenant.org.
+      </p>
+    </div>
+  </footer>
+
+  <script src="/lease-check.js"></script>
+</body>
+</html>
