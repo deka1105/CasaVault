@@ -66,11 +66,19 @@
     <section id="start-section" hidden>
       <h2>Keep your own record here</h2>
       <p>
-        Add your lease, log what happens, and report problems in writing. What you add is
-        private to you — nothing above comes from anyone's documents.
+        Start by uploading your lease. We'll read it, check it against the law, and build
+        your record from there. What you add is private to you — nothing above comes from
+        anyone's documents.
       </p>
       <div class="card" style="max-width: 560px;">
         <form id="create-record-form">
+          <label class="field">
+            <span>Upload your lease (PDF, photo, or text file)</span>
+            <input id="record-lease" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.txt">
+          </label>
+          <p class="hint" style="margin: -0.2rem 0 0.75rem; color: var(--ink-faint); font-size: 0.8rem;">
+            Max 4 MB. We read it to extract the facts, then check them against the rules.
+          </p>
           <div class="field-row-group">
             <label class="field">
               <span>Unit (optional)</span>
@@ -86,6 +94,7 @@
           </p>
           <button type="submit" class="btn btn-primary">Start my record here</button>
         </form>
+        <p id="create-progress" class="hint" hidden style="margin-top: 0.5rem;"></p>
         <p id="create-error" class="error" hidden></p>
       </div>
     </section>
