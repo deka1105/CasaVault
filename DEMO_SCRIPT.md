@@ -186,7 +186,6 @@ Screen: Click "What we check" in the nav. 9 rules visible.
 |-------|---------------------------|-----|
 | 1 | Headline: "Keep proof of your rental..." | Anchors the product's promise |
 | 2 | Licence status: "No active rental licence" | The key City data finding |
-| 2 | Violation rows (if any) | Shows L&I data is live |
 | 3 | Finding #1 full text | Deposit over first-year cap |
 | 3 | Citation: `68 P.S. § 250.511a(a)` | Proves the citation is real |
 | 3 | Finding #2 full text | Waiver clause void |
