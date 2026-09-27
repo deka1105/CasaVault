@@ -489,8 +489,9 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   padding: 0.85rem 1rem;
   background: var(--surface-sunk);
 }
-.finding-violation { border-left-color: var(--violation); background: var(--violation-bg); border-color: var(--violation-line); }
-.finding-caution { border-left-color: var(--caution); background: var(--caution-bg); border-color: var(--caution-line); }
+.finding-violation, .finding.flagged { border-left-color: var(--violation); background: var(--violation-bg); border-color: var(--violation-line); }
+.finding-caution, .finding.unknown { border-left-color: var(--caution); background: var(--caution-bg); border-color: var(--caution-line); }
+.finding.passed { border-left-color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
 .finding-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap; }
 .badge {
   font-size: 0.66rem;
