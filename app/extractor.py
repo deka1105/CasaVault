@@ -1,9 +1,13 @@
+import logging
+import time
 from pathlib import Path
 from typing import Any
 
 from app.config import GEMINI_API_KEY, GEMINI_MODEL
 from app.gemini_client import available_key_count, build_client
 from app.extraction_schema import ExtractedFacts
+
+logger = logging.getLogger(__name__)
 
 # google-genai's DocumentContent/ImageContent types only recognize these
 # mime types (checked against the installed SDK's type defs, see below).
@@ -100,31 +104,41 @@ def extract_facts_from_file(path: Path) -> dict[str, Any]:
     content_block = _content_block_for_file(path)
     num_keys = available_key_count()
 
+    max_retries = 2
     for key_idx in range(num_keys):
         client = build_client(key_index=key_idx)
-        try:
-            interaction = client.interactions.create(
-                model=GEMINI_MODEL,
-                input=[
-                    {"type": "text", "text": _EXTRACTION_PROMPT},
-                    content_block,
-                ],
-                response_format={
-                    "type": "text",
-                    "mime_type": "application/json",
-                    "schema": ExtractedFacts.model_json_schema(),
-                },
-            )
-            facts = ExtractedFacts.model_validate_json(interaction.output_text)
-            return facts.model_dump(exclude_none=True)
-        except Exception as exc:
-            classified = classify_extraction_error(exc)
-            if isinstance(classified, ExtractionRateLimited) and key_idx < num_keys - 1:
-                import logging
-                logging.getLogger(__name__).info(
-                    "extraction key %d/%d rate-limited, trying next", key_idx + 1, num_keys
+        last_exc = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                interaction = client.interactions.create(
+                    model=GEMINI_MODEL,
+                    input=[
+                        {"type": "text", "text": _EXTRACTION_PROMPT},
+                        content_block,
+                    ],
+                    response_format={
+                        "type": "text",
+                        "mime_type": "application/json",
+                        "schema": ExtractedFacts.model_json_schema(),
+                    },
                 )
-                continue
-            raise classified from exc
+                facts = ExtractedFacts.model_validate_json(interaction.output_text)
+                return facts.model_dump(exclude_none=True)
+            except Exception as exc:
+                classified = classify_extraction_error(exc)
+                if isinstance(classified, ExtractionRateLimited) and key_idx < num_keys - 1:
+                    logger.info("extraction key %d/%d rate-limited, trying next", key_idx + 1, num_keys)
+                    last_exc = classified
+                    break
+                if isinstance(classified, ExtractionUpstreamError) and attempt < max_retries:
+                    logger.info("extraction attempt %d/%d got 5xx, retrying in %ds", attempt, max_retries, attempt * 3)
+                    time.sleep(attempt * 3)
+                    last_exc = classified
+                    continue
+                raise classified from exc
+        if isinstance(last_exc, ExtractionRateLimited) and key_idx < num_keys - 1:
+            continue
+        if last_exc is not None:
+            raise last_exc
 
     raise ExtractionRateLimited("all API keys exhausted")
