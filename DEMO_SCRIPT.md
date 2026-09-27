@@ -34,9 +34,8 @@ Screen: Property page loads with City records.
 is **not active** or **expired**.
 
 > "No active rental licence. That's the most common successful defence in
-> landlord-tenant court."
-
-**Highlight:** Select the violation count or any open violation rows if present.
+> landlord-tenant court — and CasaVault found it without anyone typing a
+> thing."
 
 ---
 
