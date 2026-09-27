@@ -20,3 +20,6 @@ dist/
 build/
 .tox/
 .vercel
+
+# Auto-added by watcher (too large for GitHub)
+video/CasaVault_workflow.mp4

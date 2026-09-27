@@ -518,6 +518,9 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .finding-icon.finding-ok { background: var(--accent); }
 .finding-icon.finding-unknown { background: var(--caution); }
 
+#findings-list .finding { display: flex; gap: 0.75rem; align-items: flex-start; }
+#findings-list .finding p { margin: 0.2rem 0; }
+
 /* --- multi-document uploads --------------------------------------------- */
 
 .upload-progress {
