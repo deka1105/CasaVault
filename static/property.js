@@ -214,10 +214,26 @@ function setup() {
   $("create-record-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const errorEl = $("create-error");
+    const progressEl = $("create-progress");
     errorEl.hidden = true;
+    progressEl.hidden = true;
     const btn = e.target.querySelector('button[type="submit"]');
     btn.disabled = true;
+
+    const file = $("record-lease").files[0];
+    const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+    if (file && file.size > MAX_UPLOAD_BYTES) {
+      errorEl.textContent = `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 4 MB.`;
+      errorEl.hidden = false;
+      btn.disabled = false;
+      return;
+    }
+
     try {
+      progressEl.textContent = "Creating your record…";
+      progressEl.hidden = false;
+
       const res = await fetch("/api/vaults", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -234,10 +250,30 @@ function setup() {
         throw new Error(detail || `${res.status} ${res.statusText}`);
       }
       const vault = await res.json();
+
+      if (file) {
+        progressEl.textContent = `Uploading ${file.name}…`;
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("event_type", "document_upload");
+        const manifest = JSON.stringify([file.name]);
+        formData.append("manifest", manifest);
+        formData.append("index", "0");
+
+        const uploadRes = await fetch(`/api/vaults/${vault.id}/documents`, {
+          method: "POST",
+          body: formData,
+        });
+        if (uploadRes.ok) {
+          progressEl.textContent = "Reading your lease…";
+        }
+      }
+
       location.href = `/?vault=${encodeURIComponent(vault.id)}`;
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.hidden = false;
+      progressEl.hidden = true;
       btn.disabled = false;
     }
   });
