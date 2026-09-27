@@ -24,18 +24,22 @@ what the law says."
 
 > "CasaVault starts with the address."
 
-**Action:** Type `3127 Kensington Ave` in the search box. Hit "Look it up."
+**Action:** Type `2153 E Cambria St` in the search box. Hit "Look it up."
 
-Screen: Property page loads with City records.
+Screen: Property page loads with City records — inactive licence, open violations.
 
 > "This comes live from Philadelphia L&I."
 
-**Highlight:** Select the licence status line — the text that says the licence
-is **not active** or **expired**.
+**Highlight:** Select the licence status — **Inactive, expired May 2026**.
 
-> "No active rental licence. That's the most common successful defence in
-> landlord-tenant court — and CasaVault found it without anyone typing a
-> thing."
+> "No active rental licence. That alone bars the landlord from collecting
+> rent or filing for eviction."
+
+**Highlight:** Select the open violation list — plumbing hazards, electrical
+hazards, smoke alarms, CO alarms, broken windows.
+
+> "Seven open code violations, filed days ago. CasaVault found all of this
+> without anyone typing a thing."
 
 ---
 
