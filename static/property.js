@@ -256,6 +256,7 @@ function setup() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("event_type", "document_upload");
+        formData.append("occurred_at", new Date().toISOString().slice(0, 10));
         const manifest = JSON.stringify([file.name]);
         formData.append("manifest", manifest);
         formData.append("index", "0");
