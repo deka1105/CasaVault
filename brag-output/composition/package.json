@@ -1,0 +1,10 @@
+{
+  "name": "casavault-brag",
+  "private": true,
+  "scripts": {
+    "dev": "npx hyperframes@0.8.81 dev",
+    "check": "npx hyperframes@0.8.81 check",
+    "render": "npx hyperframes@0.8.81 render",
+    "publish": "npx hyperframes@0.8.81 publish"
+  }
+}
