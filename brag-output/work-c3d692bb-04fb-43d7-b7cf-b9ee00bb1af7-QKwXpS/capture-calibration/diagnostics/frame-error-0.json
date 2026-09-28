@@ -1,0 +1,11 @@
+{
+  "frameIndex": 0,
+  "time": 0,
+  "error": "drawElement capture failed at frame 0: suspect small frame (13001B < 20000B); fresh screenshot capture required",
+  "stack": "DrawElementCaptureError: drawElement capture failed at frame 0: suspect small frame (13001B < 20000B); fresh screenshot capture required\n    at captureFrameSurface (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:73331:17)\n    at async captureFrameCore (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:73476:161)\n    at async withFrameDeadline (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:73250:12)\n    at async captureFrameToBuffer (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:73520:77)\n    at async measureCaptureCostFromSession (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:137204:22)\n    at async runOneCalibration (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:137288:20)\n    at async runCaptureCalibration (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:137301:19)\n    at async observeRenderStage (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:137504:20)\n    at async executeRenderPipeline (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:149199:23)\n    at async Object.executeRenderJob (file:///private/tmp/phil-npm-cache/_npx/daef3f3947ca6baa/node_modules/hyperframes/dist/cli.js:148555:5)",
+  "browserConsoleTail": [
+    "[FrameCapture:NAV] page.goto start mode=screenshot timeoutMs=60000 url=http://localhost:63639/index.html",
+    "[HyperFrames] render runtime fps {\"canonicalFps\":30,\"source\":\"render-options\",\"rawFpsSource\":\"render-options\",\"rawFps\":30}",
+    "[FrameCapture:INIT] complete initDurationMs=543 tweenCount=16 elementCount=56"
+  ]
+}
