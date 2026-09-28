@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: 'SFMono-Regular'; src: local('SF Mono'), local('SFMono-Regular'); }
+      @font-face { font-family: 'Cascadia Code'; src: local('Cascadia Code'); }
+      @font-face { font-family: 'Segoe UI Mono'; src: local('Segoe UI Mono'); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0; width: 1920px; height: 1080px;
+        overflow: hidden; background: #f6f4ef;
+      }
+      .wrap {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 200px;
+      }
+      .agent-panel {
+        background: #ffffff; border-radius: 16px;
+        padding: 40px 48px; width: 1200px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+      }
+      .agent-header {
+        font-family: system-ui, -apple-system, ui-sans-serif, sans-serif;
+        font-size: 24px; font-weight: 600; color: #1d5c4d;
+        margin-bottom: 28px; text-transform: uppercase; letter-spacing: 0.08em;
+      }
+      .agent-question {
+        font-family: Georgia, "Times New Roman", ui-serif, serif;
+        font-size: 30px; color: #1b1a17;
+        padding: 16px 24px; background: #f0eeea;
+        border-radius: 10px; margin-bottom: 20px; opacity: 0;
+      }
+      .agent-answer {
+        font-family: system-ui, -apple-system, ui-sans-serif, sans-serif;
+        font-size: 28px; color: #1b1a17;
+        padding: 16px 24px; opacity: 0;
+      }
+      .answer-text { font-weight: 600; }
+      .answer-citation {
+        font-family: "SFMono-Regular", "SF Mono", ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+        color: #1d5c4d; display: block; margin-top: 8px;
+      }
+      .agent-refusal {
+        font-family: system-ui, -apple-system, ui-sans-serif, sans-serif;
+        font-size: 28px; color: #9f2f24; font-weight: 600;
+        padding: 16px 24px; opacity: 0;
+      }
+      .agent-handoff {
+        font-family: system-ui, -apple-system, ui-sans-serif, sans-serif;
+        font-size: 24px; color: #6b6961;
+        padding: 8px 24px; opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap" data-composition-id="scene3" data-start="0" data-duration="5.5" data-width="1920" data-height="1080">
+      <div class="agent-panel">
+        <div class="agent-header">Ask this vault</div>
+        <div id="q1" class="clip agent-question" data-start="0.3" data-duration="5.2">"How long does he have to return my deposit?"</div>
+        <div id="a1" class="clip agent-answer" data-start="1.3" data-duration="4.2">
+          <span class="answer-text">30 days from move-out.</span>
+          <span class="answer-citation">68 P.S. § 250.512</span>
+        </div>
+        <div id="q2" class="clip agent-question" data-start="2.5" data-duration="3.0" style="margin-top: 24px;">"Will I win in court?"</div>
+        <div id="a2-refusal" class="clip agent-refusal" data-start="3.5" data-duration="2.0">I can't answer that.</div>
+        <div id="a2-handoff" class="clip agent-handoff" data-start="4.3" data-duration="1.2">Here's who can: Philly Tenant Hotline (267) 443-2500</div>
+      </div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#q1", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.3);
+      // beat-locked: 12.65s → scene-local 3.15s for answer
+      tl.fromTo("#a1", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, 1.3);
+      tl.fromTo("#q2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 2.5);
+      tl.fromTo("#a2-refusal", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 3.5);
+      // beat-locked: ~17.91s → scene-local 4.3s (refusal handoff)
+      tl.fromTo("#a2-handoff", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 4.3);
+      window.__timelines["scene3"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
