@@ -5,192 +5,13 @@
     <meta name="viewport" content="width=1920, height=1080" />
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
+      @font-face { font-family: 'SFMono-Regular'; src: local('SF Mono'), local('SFMono-Regular'); }
+      @font-face { font-family: 'Cascadia Code'; src: local('Cascadia Code'); }
+      @font-face { font-family: 'Segoe UI Mono'; src: local('Segoe UI Mono'); }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body {
-        margin: 0;
-        width: 1920px;
-        height: 1080px;
-        overflow: hidden;
-        background: #f6f4ef;
-      }
-
-      /* Fonts */
-      .serif { font-family: Georgia, "Times New Roman", ui-serif, serif; }
-      .sans { font-family: system-ui, -apple-system, ui-sans-serif, sans-serif; }
-      .mono { font-family: "SFMono-Regular", "SF Mono", ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace; }
-
-      /* Colors */
-      :root {
-        --bg: #f6f4ef;
-        --text: #1b1a17;
-        --accent: #1d5c4d;
-        --violation: #9f2f24;
-        --violation-bg: #fdf0ee;
-        --violation-line: #e8b4ae;
-        --surface: #ffffff;
-        --muted: #6b6961;
-      }
-
-      /* Scene containers */
-      .scene {
-        position: absolute;
-        top: 0; left: 0;
-        width: 1920px;
-        height: 1080px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        opacity: 0;
-      }
-
-      /* Scene 1: The Stakes */
-      #scene1 { background: var(--bg); }
-      #scene1 .hook-line {
-        font-size: 64px;
-        font-weight: 700;
-        color: var(--text);
-        line-height: 1.3;
-        text-align: center;
-        opacity: 0;
-      }
-      #scene1 .hook-line.stat { font-size: 72px; }
-      #scene1 .hook-line.kicker {
-        font-size: 48px;
-        color: var(--muted);
-        margin-top: 24px;
-        font-style: italic;
-      }
-
-      /* Scene 2: Upload + Flags */
-      #scene2 { background: var(--bg); padding: 0 200px; }
-      .upload-card {
-        background: var(--surface);
-        border-radius: 16px;
-        padding: 32px 40px;
-        width: 1200px;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-        opacity: 0;
-      }
-      .upload-filename {
-        font-size: 28px;
-        color: var(--muted);
-        margin-bottom: 28px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .upload-filename .icon {
-        display: inline-flex;
-        width: 36px;
-        height: 36px;
-        background: var(--accent);
-        border-radius: 8px;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 18px;
-        font-weight: 700;
-      }
-      .finding-card {
-        background: var(--violation-bg);
-        border-left: 5px solid var(--violation);
-        border-radius: 0 12px 12px 0;
-        padding: 20px 28px;
-        margin-bottom: 16px;
-        opacity: 0;
-        transform: translateX(-40px);
-      }
-      .finding-card:last-child { margin-bottom: 0; }
-      .finding-title {
-        font-size: 26px;
-        font-weight: 600;
-        color: var(--text);
-        margin-bottom: 6px;
-      }
-      .finding-citation {
-        font-size: 20px;
-        color: var(--violation);
-        letter-spacing: 0.02em;
-      }
-
-      /* Scene 3: Grounded Agent */
-      #scene3 { background: var(--bg); padding: 0 200px; }
-      .agent-panel {
-        background: var(--surface);
-        border-radius: 16px;
-        padding: 40px 48px;
-        width: 1200px;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-      }
-      .agent-header {
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--accent);
-        margin-bottom: 28px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-      .agent-question {
-        font-size: 30px;
-        color: var(--text);
-        padding: 16px 24px;
-        background: #f0eeea;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        opacity: 0;
-      }
-      .agent-answer {
-        font-size: 28px;
-        color: var(--text);
-        padding: 16px 24px;
-        opacity: 0;
-      }
-      .agent-answer .answer-text { font-weight: 600; }
-      .agent-answer .answer-citation {
-        color: var(--accent);
-        display: block;
-        margin-top: 8px;
-      }
-      .agent-refusal {
-        font-size: 28px;
-        color: var(--violation);
-        font-weight: 600;
-        padding: 16px 24px;
-        opacity: 0;
-      }
-      .agent-handoff {
-        font-size: 24px;
-        color: var(--muted);
-        padding: 8px 24px;
-        opacity: 0;
-      }
-
-      /* Scene 4: Closer */
-      #scene4 { background: var(--bg); }
-      .closer-line {
-        font-size: 44px;
-        font-weight: 600;
-        color: var(--text);
-        text-align: center;
-        line-height: 1.5;
-        opacity: 0;
-      }
-      .closer-wordmark {
-        font-size: 80px;
-        font-weight: 700;
-        color: var(--accent);
-        margin-top: 48px;
-        letter-spacing: -0.02em;
-        opacity: 0;
-      }
-      .closer-sub {
-        font-size: 24px;
-        color: var(--muted);
-        margin-top: 12px;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        opacity: 0;
+        margin: 0; width: 1920px; height: 1080px;
+        overflow: hidden; background: #f6f4ef;
       }
     </style>
   </head>
@@ -204,59 +25,16 @@
       data-height="1080"
     >
       <!-- Scene 1: The Stakes — 0s to 3.5s -->
-      <div id="scene1" class="clip scene" data-start="0" data-duration="3.5" data-track-index="0">
-        <div id="line1" class="hook-line stat serif">87% of landlords have a lawyer.</div>
-        <div id="line2" class="hook-line stat serif">16% of tenants do.</div>
-        <div id="line3" class="hook-line kicker serif">They don't lose because they're wrong.</div>
-      </div>
+      <div class="clip" data-start="0" data-duration="3.5" data-track-index="0" data-composition-src="compositions/scene1.html"></div>
 
       <!-- Scene 2: Upload + Flags — 3.5s to 9.5s -->
-      <div id="scene2" class="clip scene" data-start="3.5" data-duration="6" data-track-index="1">
-        <div id="upload-card" class="upload-card">
-          <div class="upload-filename sans">
-            <span class="icon">P</span>
-            lease_north_broad.pdf
-          </div>
-          <!-- beat-grid: card 1 at 8.96s, card 2 at 9.50s, card 3 at 10.01s — mapped to scene-local 5.46, 6.00, 6.51 but adjusted for readability -->
-          <div id="flag1" class="finding-card">
-            <div class="finding-title sans">Deposit exceeds first-year cap</div>
-            <div class="finding-citation mono">68 P.S. § 250.511a(a)</div>
-          </div>
-          <div id="flag2" class="finding-card">
-            <div class="finding-title sans">Deposit waiver clause is void</div>
-            <div class="finding-citation mono">68 P.S. § 250.511a(f)</div>
-          </div>
-          <div id="flag3" class="finding-card">
-            <div class="finding-title sans">No escrow bank disclosed</div>
-            <div class="finding-citation mono">68 P.S. § 250.511b</div>
-          </div>
-        </div>
-      </div>
+      <div class="clip" data-start="3.5" data-duration="6" data-track-index="1" data-composition-src="compositions/scene2.html"></div>
 
       <!-- Scene 3: Grounded Agent — 9.5s to 15s -->
-      <div id="scene3" class="clip scene" data-start="9.5" data-duration="5.5" data-track-index="2">
-        <div class="agent-panel">
-          <div class="agent-header sans">Ask this vault</div>
-          <div id="q1" class="agent-question serif">"How long does he have to return my deposit?"</div>
-          <div id="a1" class="agent-answer sans">
-            <span class="answer-text">30 days from move-out.</span>
-            <span class="answer-citation mono">68 P.S. § 250.512</span>
-          </div>
-          <div id="q2" class="agent-question serif" style="margin-top: 24px;">"Will I win in court?"</div>
-          <div id="a2-refusal" class="agent-refusal sans">I can't answer that.</div>
-          <div id="a2-handoff" class="agent-handoff sans">Here's who can: Philly Tenant Hotline (267) 443-2500</div>
-        </div>
-      </div>
+      <div class="clip" data-start="9.5" data-duration="5.5" data-track-index="2" data-composition-src="compositions/scene3.html"></div>
 
-      <!-- Scene 4: Closer — 15s to 21s (last 2s fade) -->
-      <div id="scene4" class="clip scene" data-start="15" data-duration="6" data-track-index="3">
-        <div id="closer-statements">
-          <div id="stmt1" class="closer-line sans">Every answer cites a source.</div>
-          <div id="stmt2" class="closer-line sans">Every refusal routes to a human.</div>
-        </div>
-        <div id="wordmark" class="closer-wordmark serif">CasaVault</div>
-        <div id="lexhack" class="closer-sub sans">Built at LexHack 2026</div>
-      </div>
+      <!-- Scene 4: Closer — 15s to 21s -->
+      <div class="clip" data-start="15" data-duration="6" data-track-index="3" data-composition-src="compositions/scene4.html"></div>
 
       <!-- Audio: Music bed -->
       <audio
@@ -268,12 +46,12 @@
         src="assets/music/happy-beats-business-moves-vol-11-by-ende-dot-app.mp3"
       ></audio>
 
-      <!-- SFX: card arrivals -->
+      <!-- SFX: card arrivals (absolute times: 3.5 + 1.96, 3.5 + 2.50, 3.5 + 3.01) -->
       <audio id="sfx-card1" data-start="5.46" data-duration="1" data-track-index="11" data-volume="0.65" src="assets/sfx/casino/card-place-1.ogg"></audio>
       <audio id="sfx-card2" data-start="6.00" data-duration="1" data-track-index="12" data-volume="0.65" src="assets/sfx/casino/card-place-2.ogg"></audio>
       <audio id="sfx-card3" data-start="6.51" data-duration="1" data-track-index="13" data-volume="0.65" src="assets/sfx/casino/card-place-3.ogg"></audio>
 
-      <!-- SFX: agent refusal thud -->
+      <!-- SFX: agent refusal thud (absolute: 9.5 + 4.3 = 13.8) -->
       <audio id="sfx-refusal" data-start="13.8" data-duration="1.2" data-track-index="14" data-volume="0.60" src="assets/sfx/impact/impactSoft_medium_001.ogg"></audio>
 
       <!-- SFX: soft transitions -->
@@ -284,62 +62,6 @@
     <script>
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
-
-      // ========================
-      // Scene 1: The Stakes (0s – 3.5s)
-      // ========================
-      // beat-locked: 1.60s for hook landing
-      tl.to("#scene1", { opacity: 1, duration: 0.01 }, 0);
-      tl.fromTo("#line1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 }, 0.3);
-      tl.fromTo("#line2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 }, 1.1);
-      // beat-locked: ~1.60s
-      tl.fromTo("#line3", { opacity: 0 }, { opacity: 1, duration: 0.6 }, 2.1);
-      tl.to("#scene1", { opacity: 0, duration: 0.3 }, 3.2);
-
-      // ========================
-      // Scene 2: Upload + Flags (3.5s – 9.5s)
-      // ========================
-      tl.to("#scene2", { opacity: 1, duration: 0.01 }, 3.5);
-      // beat-locked: 5.80s for lease card
-      tl.fromTo("#upload-card", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5 }, 3.7);
-
-      // beat-grid: violation cards at ~5.46s, ~6.00s, ~6.51s (scene-absolute: +3.5 = 8.96, 9.50, 10.01)
-      // Adjusted to scene-absolute times minus scene start for GSAP
-      tl.fromTo("#flag1", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35 }, 5.46);
-      tl.fromTo("#flag2", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35 }, 6.00);
-      tl.fromTo("#flag3", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35 }, 6.51);
-
-      tl.to("#scene2", { opacity: 0, duration: 0.3 }, 9.2);
-
-      // ========================
-      // Scene 3: Grounded Agent (9.5s – 15s)
-      // ========================
-      tl.to("#scene3", { opacity: 1, duration: 0.01 }, 9.5);
-      tl.fromTo("#q1", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 9.8);
-      // beat-locked: ~12.65s for answer reveal
-      tl.fromTo("#a1", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, 10.8);
-
-      // Second question + refusal
-      tl.fromTo("#q2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 12.0);
-      // The refusal: the punchline
-      tl.fromTo("#a2-refusal", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 13.0);
-      tl.fromTo("#a2-handoff", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 13.8);
-
-      tl.to("#scene3", { opacity: 0, duration: 0.3 }, 14.7);
-
-      // ========================
-      // Scene 4: Closer (15s – 21s)
-      // ========================
-      tl.to("#scene4", { opacity: 1, duration: 0.01 }, 15);
-      tl.fromTo("#stmt1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 }, 15.3);
-      tl.fromTo("#stmt2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 }, 16.0);
-      // beat-locked: ~17.91s for wordmark
-      tl.fromTo("#wordmark", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.6 }, 17.3);
-      tl.fromTo("#lexhack", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 18.2);
-
-      // Music fade out over final 2s (visual indicator — audio fade handled by renderer)
-      tl.to("#scene4", { opacity: 0, duration: 1.5 }, 19.5);
-
       window.__timelines["main"] = tl;
       tl.seek(0);
     </script>
