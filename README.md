@@ -10,9 +10,7 @@ Built at **LexHack 2026** | Track: Access to Justice & Civic Tech
 
 ## Demo
 
-### Full Workflow
-
-<video src="video/CasaVault_workflow.mp4" controls width="100%"></video>
+<video src="video/1790551528193167.mp4" controls width="100%"></video>
 
 ### Sign-in Flow
 
