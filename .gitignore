@@ -25,5 +25,7 @@ build/
 video/CasaVault_workflow_original.mp4
 
 
+# 1790551528193167.mp4 is tracked via Git LFS — do NOT gitignore it
+
 # Auto-added by watcher (too large for GitHub)
 video/1790551528193167.mp4
