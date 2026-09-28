@@ -1,0 +1,11 @@
+Upload your lease. Know your rights.
+
+CasaVault checks every clause against Philadelphia and Pennsylvania rental statutes — and cites the exact section behind every finding. Ask a question: it answers from your records, or refuses and tells you who can help.
+
+87% of landlords have a lawyer. 16% of tenants do.
+They don't lose because they're wrong.
+
+Every answer cites a source. Every refusal routes to a human.
+
+Built at LexHack 2026.
+casavault.vercel.app
