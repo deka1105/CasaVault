@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: 'SFMono-Regular'; src: local('SF Mono'), local('SFMono-Regular'); }
+      @font-face { font-family: 'Cascadia Code'; src: local('Cascadia Code'); }
+      @font-face { font-family: 'Segoe UI Mono'; src: local('Segoe UI Mono'); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0; width: 1920px; height: 1080px;
+        overflow: hidden; background: #f6f4ef;
+      }
+      .wrap {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 200px;
+      }
+      .upload-card {
+        background: #ffffff; border-radius: 16px;
+        padding: 32px 40px; width: 1200px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+        opacity: 0;
+      }
+      .upload-filename {
+        font-family: system-ui, -apple-system, ui-sans-serif, sans-serif;
+        font-size: 28px; color: #6b6961;
+        margin-bottom: 28px; display: flex; align-items: center; gap: 12px;
+      }
+      .upload-filename .icon {
+        display: inline-flex; width: 36px; height: 36px;
+        background: #1d5c4d; border-radius: 8px;
+        align-items: center; justify-content: center;
+        color: white; font-size: 18px; font-weight: 700;
+      }
+      .finding-card {
+        background: #fdf0ee; border-left: 5px solid #9f2f24;
+        border-radius: 0 12px 12px 0; padding: 20px 28px;
+        margin-bottom: 16px; opacity: 0; transform: translateX(-40px);
+      }
+      .finding-card:last-child { margin-bottom: 0; }
+      .finding-title {
+        font-family: system-ui, -apple-system, ui-sans-serif, sans-serif;
+        font-size: 26px; font-weight: 600; color: #1b1a17; margin-bottom: 6px;
+      }
+      .finding-citation {
+        font-family: "SFMono-Regular", "SF Mono", ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+        font-size: 20px; color: #9f2f24; letter-spacing: 0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap" data-composition-id="scene2" data-start="0" data-duration="6" data-width="1920" data-height="1080">
+      <div id="upload-card" class="clip upload-card" data-start="0.2" data-duration="5.8">
+        <div class="upload-filename">
+          <span class="icon">P</span>
+          lease_north_broad.pdf
+        </div>
+        <div id="flag1" class="clip finding-card" data-start="1.96" data-duration="4.04">
+          <div class="finding-title">Deposit exceeds first-year cap</div>
+          <div class="finding-citation">68 P.S. § 250.511a(a)</div>
+        </div>
+        <div id="flag2" class="clip finding-card" data-start="2.50" data-duration="3.50">
+          <div class="finding-title">Deposit waiver clause is void</div>
+          <div class="finding-citation">68 P.S. § 250.511a(f)</div>
+        </div>
+        <div id="flag3" class="clip finding-card" data-start="3.01" data-duration="2.99">
+          <div class="finding-title">No escrow bank disclosed</div>
+          <div class="finding-citation">68 P.S. § 250.511b</div>
+        </div>
+      </div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      // beat-locked: 5.80s → scene-local 2.30s for card entering
+      tl.fromTo("#upload-card", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5 }, 0.2);
+      // beat-grid: cards at scene-local 1.96s, 2.50s, 3.01s (absolute 5.46, 6.00, 6.51 = beat grid 8.96-3.5, 9.50-3.5, 10.01-3.5)
+      tl.fromTo("#flag1", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35 }, 1.96);
+      tl.fromTo("#flag2", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35 }, 2.50);
+      tl.fromTo("#flag3", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.35 }, 3.01);
+      window.__timelines["scene2"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
